@@ -16,17 +16,17 @@ import (
 
 // Server is the reverse-proxy/load-balancer engine.
 type Server struct {
-	watcher        *ConfigurationWatcher
-	tcpEntryPoints TCPEntryPoints
-	udpEntryPoints UDPEntryPoints
-	chainBuilder   *middleware.ChainBuilder
+	watcher        *ConfigurationWatcher    // 配置监听器，这里应该就是动态加载配置的地方
+	tcpEntryPoints TCPEntryPoints           // TCP入口点
+	udpEntryPoints UDPEntryPoints           // UDP入口点
+	chainBuilder   *middleware.ChainBuilder // 中间件
 
-	accessLoggerMiddleware *accesslog.Handler
+	accessLoggerMiddleware *accesslog.Handler // 日志处理
 
-	signals  chan os.Signal
+	signals  chan os.Signal // 退出信号
 	stopChan chan bool
 
-	routinesPool *safe.Pool
+	routinesPool *safe.Pool // 协程池
 }
 
 // NewServer returns an initialized Server.

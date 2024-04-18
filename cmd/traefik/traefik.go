@@ -47,7 +47,7 @@ import (
 )
 
 func main() {
-	// traefik config inits
+	// traefik config inits 初始化Traefik配置
 	tConfig := cmd.NewTraefikConfiguration()
 
 	loaders := []cli.ResourceLoader{&tcli.FileLoader{}, &tcli.FlagLoader{}, &tcli.EnvLoader{}}
@@ -58,17 +58,20 @@ func main() {
 Complete documentation is available at https://traefik.io`,
 		Configuration: tConfig,
 		Resources:     loaders,
+		// 启动Traefik服务
 		Run: func(_ []string) error {
 			return runCmd(&tConfig.Configuration)
 		},
 	}
 
+	// 增加healthcheck命令
 	err := cmdTraefik.AddCommand(healthcheck.NewCmd(&tConfig.Configuration, loaders))
 	if err != nil {
 		stdlog.Println(err)
 		os.Exit(1)
 	}
 
+	// 增加version子命令
 	err = cmdTraefik.AddCommand(cmdVersion.NewCmd())
 	if err != nil {
 		stdlog.Println(err)
@@ -85,14 +88,18 @@ Complete documentation is available at https://traefik.io`,
 }
 
 func runCmd(staticConfiguration *static.Configuration) error {
+	// TODO 日志
 	configureLogging(staticConfiguration)
 
+	// TODO 这玩意有啥用？
 	http.DefaultTransport.(*http.Transport).Proxy = http.ProxyFromEnvironment
 
+	// TODO 为什么在这里设置负载均衡策略？
 	if err := roundrobin.SetDefaultWeight(0); err != nil {
 		log.WithoutContext().Errorf("Could not set round robin default weight: %v", err)
 	}
 
+	// TODO 猜测这里实在检查配置是否有效
 	staticConfiguration.SetEffectiveConfiguration()
 	if err := staticConfiguration.ValidateConfiguration(); err != nil {
 		return err
@@ -100,6 +107,7 @@ func runCmd(staticConfiguration *static.Configuration) error {
 
 	log.WithoutContext().Infof("Traefik version %s built on %s", version.Version, version.BuildDate)
 
+	// 反序列化静态配置
 	jsonConf, err := json.Marshal(staticConfiguration)
 	if err != nil {
 		log.WithoutContext().Errorf("Could not marshal static configuration: %v", err)
@@ -108,10 +116,12 @@ func runCmd(staticConfiguration *static.Configuration) error {
 		log.WithoutContext().Debugf("Static configuration loaded %s", string(jsonConf))
 	}
 
+	// TODO 怎么检查版本的
 	if staticConfiguration.Global.CheckNewVersion {
 		checkNewVersion()
 	}
 
+	// TODO 似乎是在给Traefik发送一些统计数据
 	stats(staticConfiguration)
 
 	svr, err := setupServer(staticConfiguration)
@@ -165,12 +175,13 @@ func runCmd(staticConfiguration *static.Configuration) error {
 }
 
 func setupServer(staticConfiguration *static.Configuration) (*server.Server, error) {
+	// TODO 这里是在干嘛？
 	providerAggregator := aggregator.NewProviderAggregator(*staticConfiguration.Providers)
 
 	ctx := context.Background()
-	routinesPool := safe.NewPool(ctx)
+	routinesPool := safe.NewPool(ctx) // 实例化协程池
 
-	// adds internal provider
+	// adds internal provider TODO 这里应按Traefik内部的一些东西
 	err := providerAggregator.AddProvider(traefik.New(*staticConfiguration))
 	if err != nil {
 		return nil, err

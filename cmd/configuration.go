@@ -21,8 +21,8 @@ func NewTraefikConfiguration() *TraefikCmdConfiguration {
 			Global: &static.Global{
 				CheckNewVersion: true,
 			},
-			EntryPoints: make(static.EntryPoints),
-			Providers: &static.Providers{
+			EntryPoints: make(static.EntryPoints), // 入口点
+			Providers: &static.Providers{ // Provider
 				ProvidersThrottleDuration: ptypes.Duration(2 * time.Second),
 			},
 			ServersTransport: &static.ServersTransport{
