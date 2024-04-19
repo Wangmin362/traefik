@@ -5,6 +5,7 @@ import (
 )
 
 // Safe contains a thread-safe value.
+// TODO 这里为了线程安全的保存值，使用读写锁来搞定的，有没有更好的方式？
 type Safe struct {
 	value interface{}
 	lock  sync.RWMutex

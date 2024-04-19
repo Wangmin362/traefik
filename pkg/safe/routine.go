@@ -49,6 +49,7 @@ func Go(goroutine func()) {
 }
 
 // GoWithRecover starts a recoverable goroutine using given customRecover() function.
+// TODO 这个协程是如何回收的？
 func GoWithRecover(goroutine func(), customRecover func(err interface{})) {
 	go func() {
 		defer func() {

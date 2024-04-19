@@ -21,7 +21,7 @@ import (
 )
 
 var tcpFuncs = map[string]func(*matchersTree, ...string) error{
-	"HostSNI":       hostSNI,
+	"HostSNI":       hostSNI, // todo 为什么TCP可以通过SNI去匹配？
 	"HostSNIRegexp": hostSNIRegexp,
 	"ClientIP":      clientIP,
 	"ALPN":          alpn,

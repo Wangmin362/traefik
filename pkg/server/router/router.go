@@ -25,6 +25,7 @@ import (
 
 const maxUserPriority = math.MaxInt - 1000
 
+// 用于构造中间件调用链
 type middlewareBuilder interface {
 	BuildChain(ctx context.Context, names []string) *alice.Chain
 }
@@ -221,6 +222,7 @@ func (m *Manager) buildHTTPHandler(ctx context.Context, router *runtime.RouterIn
 }
 
 // BuildDefaultHTTPRouter creates a default HTTP router.
+// 这里应该就是最后一个Handler
 func BuildDefaultHTTPRouter() http.Handler {
 	return http.NotFoundHandler()
 }

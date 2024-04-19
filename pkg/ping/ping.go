@@ -7,6 +7,7 @@ import (
 )
 
 // Handler expose ping routes.
+// Ping接口
 type Handler struct {
 	EntryPoint            string `description:"EntryPoint" json:"entryPoint,omitempty" toml:"entryPoint,omitempty" yaml:"entryPoint,omitempty" export:"true"`
 	ManualRouting         bool   `description:"Manual routing" json:"manualRouting,omitempty" toml:"manualRouting,omitempty" yaml:"manualRouting,omitempty" export:"true"`

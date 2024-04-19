@@ -20,6 +20,7 @@ func NewHandlerSwitcher(newHandler http.Handler) (hs *HTTPHandlerSwitcher) {
 
 func (h *HTTPHandlerSwitcher) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	handlerBackup := h.handler.Get().(http.Handler)
+	// 直接获取Handler并执行
 	handlerBackup.ServeHTTP(rw, req)
 }
 

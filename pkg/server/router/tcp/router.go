@@ -30,6 +30,7 @@ type Router struct {
 
 	// Forwarder handlers.
 	// httpForwarder handles all HTTP requests.
+	// TODO 这玩意有啥用？
 	httpForwarder tcp.Handler
 	// httpsForwarder handles (indirectly through muxerHTTPS, or directly) all HTTPS requests.
 	httpsForwarder tcp.Handler

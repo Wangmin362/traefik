@@ -15,6 +15,7 @@ const (
 // BackOff is an exponential backoff implementation for long running jobs.
 // In long running jobs, an operation() that fails after a long Duration should not increments the backoff period.
 // If operation() takes more than MinJobInterval, Reset() is called in NextBackOff().
+// 定时执行某些任务
 type BackOff struct {
 	*backoff.ExponentialBackOff
 	MinJobInterval time.Duration

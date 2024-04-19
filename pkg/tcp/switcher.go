@@ -5,17 +5,20 @@ import (
 )
 
 // HandlerSwitcher is a TCP handler switcher.
+// TODO 如何理解这玩意的设计？
 type HandlerSwitcher struct {
-	router safe.Safe
+	router safe.Safe // 用于保存Router
 }
 
 // ServeTCP forwards the TCP connection to the current active handler.
 func (s *HandlerSwitcher) ServeTCP(conn WriteCloser) {
+	// 获取Router
 	handler := s.router.Get()
 	h, ok := handler.(Handler)
 	if ok {
 		h.ServeTCP(conn)
 	} else {
+		// TODO 一般应该不会达到这里
 		conn.Close()
 	}
 }

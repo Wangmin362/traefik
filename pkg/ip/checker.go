@@ -8,6 +8,7 @@ import (
 )
 
 // Checker allows to check that addresses are in a trusted IPs.
+// 用于限制某些IP的访问
 type Checker struct {
 	authorizedIPs    []*net.IP
 	authorizedIPsNet []*net.IPNet

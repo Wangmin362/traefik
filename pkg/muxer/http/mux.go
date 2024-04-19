@@ -16,6 +16,7 @@ import (
 
 const hostMatcher = "Host"
 
+// TODO 路由中支持的规则
 var httpFuncs = map[string]func(*mux.Route, ...string) error{
 	hostMatcher:     host,
 	"HostHeader":    host,

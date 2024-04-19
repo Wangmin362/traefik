@@ -18,6 +18,7 @@ const (
 type key string
 
 // RequestDecorator is the struct for the middleware that adds the CanonicalDomain of the request Host into a context for later use.
+// 似乎自己用来做域名解析的玩意
 type RequestDecorator struct {
 	hostResolver *Resolver
 }

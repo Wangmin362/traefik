@@ -32,6 +32,7 @@ var (
 )
 
 // Balancer is the set of operations required to manage the list of servers in a load-balancer.
+// 服务的负载均衡，当一个应用有多个服务时，就需要提供负载均衡的能力
 type Balancer interface {
 	Servers() []*url.URL
 	RemoveServer(u *url.URL) error
@@ -70,6 +71,7 @@ type Options struct {
 	LB              Balancer
 }
 
+// 自定义格式化类型的输出
 func (opt Options) String() string {
 	return fmt.Sprintf("[Hostname: %s Headers: %v Path: %s Method: %s Port: %d Interval: %s Timeout: %s FollowRedirects: %v]", opt.Hostname, opt.Headers, opt.Path, opt.Method, opt.Port, opt.Interval, opt.Timeout, opt.FollowRedirects)
 }
@@ -121,6 +123,7 @@ func (b *BackendConfig) setRequestOptions(req *http.Request) *http.Request {
 }
 
 // HealthCheck struct.
+// 健康检测，用于检查服务的健康状况。至于服务到底健不健康，怎么检测，肯定是使用Traefik的人员是知道的。他们知道如何告诉Traefik去检查应用的健康状态
 type HealthCheck struct {
 	Backends map[string]*BackendConfig
 	metrics  metricsHealthcheck

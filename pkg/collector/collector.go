@@ -19,6 +19,8 @@ import (
 // collectorURL URL where the stats are sent.
 const collectorURL = "https://collect.traefik.io/9vxmmkcdmalbdi635d4jgc5p5rx0h7h8"
 
+// TODO 这玩意似乎就是用来设计Traefik数据的一个东西
+
 // Collected data.
 type data struct {
 	Version       string

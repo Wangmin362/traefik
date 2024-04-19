@@ -34,14 +34,14 @@ func NewServer(routinesPool *safe.Pool, entryPoints TCPEntryPoints, entryPointsU
 	chainBuilder *middleware.ChainBuilder, accessLoggerMiddleware *accesslog.Handler,
 ) *Server {
 	srv := &Server{
-		watcher:                watcher,
-		tcpEntryPoints:         entryPoints,
-		chainBuilder:           chainBuilder,
+		watcher:                watcher,      // 动态配置，一旦配置发生变化，Traefik会动态加载
+		tcpEntryPoints:         entryPoints,  // TCP入口点
+		chainBuilder:           chainBuilder, // TODO 应该是一系列中间件
 		accessLoggerMiddleware: accessLoggerMiddleware,
 		signals:                make(chan os.Signal, 1),
 		stopChan:               make(chan bool, 1),
-		routinesPool:           routinesPool,
-		udpEntryPoints:         entryPointsUDP,
+		routinesPool:           routinesPool,   // 协程池
+		udpEntryPoints:         entryPointsUDP, // UDP入口点
 	}
 
 	srv.configureSignals()
@@ -52,16 +52,16 @@ func NewServer(routinesPool *safe.Pool, entryPoints TCPEntryPoints, entryPointsU
 // Start starts the server and Stop/Close it when context is Done.
 func (s *Server) Start(ctx context.Context) {
 	go func() {
-		<-ctx.Done()
+		<-ctx.Done() // 一旦上下文结束，就马上停止Traefik Server
 		logger := log.FromContext(ctx)
 		logger.Info("I have to go...")
 		logger.Info("Stopping server gracefully")
 		s.Stop()
 	}()
 
-	s.tcpEntryPoints.Start()
-	s.udpEntryPoints.Start()
-	s.watcher.Start()
+	s.tcpEntryPoints.Start() // 启动TCP入口点
+	s.udpEntryPoints.Start() // 启动UDP入口点
+	s.watcher.Start()        // 监听动态配置，一旦发现配置更新，就立马热加载动态配置
 
 	s.routinesPool.GoCtx(s.listenSignals)
 }

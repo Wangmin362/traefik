@@ -11,6 +11,7 @@ const (
 )
 
 // Strategy a strategy for IP selection.
+// TODO 这玩意这么设计是在干嘛？
 type Strategy interface {
 	GetIP(req *http.Request) string
 }

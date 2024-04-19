@@ -39,7 +39,8 @@ var httpServerLogger = stdlog.New(log.WithoutContext().WriterLevel(logrus.DebugL
 type key string
 
 const (
-	connStateKey       key    = "connState"
+	connStateKey key = "connState"
+	// TODO 这玩意有啥用？
 	debugConnectionEnv string = "DEBUG_CONNECTION"
 )
 
@@ -49,16 +50,21 @@ var (
 )
 
 type connState struct {
-	State            string
-	KeepAliveState   string
-	Start            time.Time
+	// TODO 连接状态，应按是TCP连接状态
+	State string
+	// TODO 应该指的是TCP Keepalive状态
+	KeepAliveState string
+	// TODO
+	Start time.Time
+	// TODO 当前连接中的HTTP请求数量？
 	HTTPRequestCount int
 }
 
+// TODO 这玩意是干嘛用的？ 看名字似乎是用来转发流量的
 type httpForwarder struct {
-	net.Listener
-	connChan chan net.Conn
-	errChan  chan error
+	net.Listener               // 既然是HTTP的，那么必然是基于TCP协议的类型。Listener.Accept()获取到的就是网络连接
+	connChan     chan net.Conn // 网络连接channel
+	errChan      chan error
 }
 
 func newHTTPForwarder(ln net.Listener) *httpForwarder {
@@ -152,11 +158,12 @@ func (eps TCPEntryPoints) Switch(routersTCP map[string]*tcprouter.Router) {
 }
 
 // TCPEntryPoint is the TCP server.
+// TODO 中间件是怎么在入口点中体现的？
 type TCPEntryPoint struct {
-	listener               net.Listener
-	switcher               *tcp.HandlerSwitcher
-	transportConfiguration *static.EntryPointsTransport
-	tracker                *connectionTracker
+	listener               net.Listener                 // Traefik将来会针对每一个TCP入口点启动一个Listener，监听端口流量
+	switcher               *tcp.HandlerSwitcher         // 其实就是用于获取Router的玩意，然后根据当前请求在Router中找到最合适的一个路由处理流量
+	transportConfiguration *static.EntryPointsTransport // 入口点的静态配置
+	tracker                *connectionTracker           // TODO 应该适合链路追踪有关管的东西
 	httpServer             *httpServer
 	httpsServer            *httpServer
 
@@ -165,15 +172,20 @@ type TCPEntryPoint struct {
 
 // NewTCPEntryPoint creates a new TCPEntryPoint.
 func NewTCPEntryPoint(ctx context.Context, configuration *static.EntryPoint, hostResolverConfig *types.HostResolverConfig) (*TCPEntryPoint, error) {
+	// 实例化一个连接追踪器
 	tracker := newConnectionTracker()
 
+	// 监听入口点，并且对于每个客户端连接，都设置为keepalive
 	listener, err := buildListener(ctx, configuration)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing server: %w", err)
 	}
 
+	// TODO 理解里面的路由设计
+	// TODO 为什么这里只初始化了HTTPForwarder, HTTPSForwarder
 	rt := &tcprouter.Router{}
 
+	// TODO 似乎是自己做域名解析
 	reqDecorator := requestdecorator.New(hostResolverConfig)
 
 	httpServer, err := createHTTPServer(ctx, listener, configuration, true, reqDecorator)
@@ -210,16 +222,17 @@ func NewTCPEntryPoint(ctx context.Context, configuration *static.EntryPoint, hos
 }
 
 // Start starts the TCP server.
+// 1、针对于一个TCP入口点，其实都需要启动一个TCP Server，用于在用户指定的入口上监听网络数据包
 func (e *TCPEntryPoint) Start(ctx context.Context) {
 	logger := log.FromContext(ctx)
 	logger.Debug("Starting TCP Server")
 
-	if e.http3Server != nil {
+	if e.http3Server != nil { // 如果支持http3，就启动http3 Server
 		go func() { _ = e.http3Server.Start() }()
 	}
 
 	for {
-		conn, err := e.listener.Accept()
+		conn, err := e.listener.Accept() // 阻塞，等待客户端连接到当前的入口点
 		if err != nil {
 			logger.Error(err)
 
@@ -239,16 +252,21 @@ func (e *TCPEntryPoint) Start(ctx context.Context) {
 			return
 		}
 
+		// 封装为WriteCloser
 		writeCloser, err := writeCloser(conn)
 		if err != nil {
 			panic(err)
 		}
 
+		// 启动一个协程处理当前的连接
+		// TODO 这里的safe有何用意？什么情况下是不完全的？有哪些临界值？
 		safe.Go(func() {
 			// Enforce read/write deadlines at the connection level,
 			// because when we're peeking the first byte to determine whether we are doing TLS,
 			// the deadlines at the server level are not taken into account.
 			if e.transportConfiguration.RespondingTimeouts.ReadTimeout > 0 {
+				// 设置读取的超时间
+				// TODO 如果在规定时间之内，没有读取到数据，TCP连接是怎么处理的？
 				err := writeCloser.SetReadDeadline(time.Now().Add(time.Duration(e.transportConfiguration.RespondingTimeouts.ReadTimeout)))
 				if err != nil {
 					logger.Errorf("Error while setting read deadline: %v", err)
@@ -256,12 +274,16 @@ func (e *TCPEntryPoint) Start(ctx context.Context) {
 			}
 
 			if e.transportConfiguration.RespondingTimeouts.WriteTimeout > 0 {
+				// 设置连接写入的超时间
+				// TODO 如果在规定时间之内，无法写入数据到TCP连接，TCP连接是怎么处理的？
 				err = writeCloser.SetWriteDeadline(time.Now().Add(time.Duration(e.transportConfiguration.RespondingTimeouts.WriteTimeout)))
 				if err != nil {
 					logger.Errorf("Error while setting write deadline: %v", err)
 				}
 			}
 
+			// TODO 这里的逻辑应该是：找到当前入口点的所有Router，挨个匹配，以最精确的匹配路由为准，把数据io拷贝到目标服务，当前数据流入
+			// 服务之前涉及到请求消息的处理。在数据流出服务转发给客户端之前，可以对于数据进行修改。这些都是中间件的职责
 			e.switcher.ServeTCP(newTrackedConnection(writeCloser, e.tracker))
 		})
 	}
@@ -281,6 +303,7 @@ func (e *TCPEntryPoint) Shutdown(ctx context.Context) {
 	ctx, cancel := context.WithTimeout(ctx, graceTimeOut)
 	logger.Debugf("Waiting %s seconds before killing connections.", graceTimeOut)
 
+	// 零值初始化
 	var wg sync.WaitGroup
 
 	shutdownServer := func(server stoppable) {
@@ -337,6 +360,7 @@ func (e *TCPEntryPoint) Shutdown(ctx context.Context) {
 }
 
 // SwitchRouter switches the TCP router handler.
+// TODO 什么叫做切换路由？
 func (e *TCPEntryPoint) SwitchRouter(rt *tcprouter.Router) {
 	rt.SetHTTPForwarder(e.httpServer.Forwarder)
 
@@ -378,7 +402,7 @@ func (c *writeCloserWrapper) CloseWrite() error {
 // implementation, if any was found within the underlying conn.
 func writeCloser(conn net.Conn) (tcp.WriteCloser, error) {
 	switch typedConn := conn.(type) {
-	case *proxyproto.Conn:
+	case *proxyproto.Conn: // TODO 这个连接类型有啥用？ 什么时候会是这种类型的连接？
 		underlying, ok := typedConn.TCPConn()
 		if !ok {
 			return nil, errors.New("underlying connection is not a tcp connection")
@@ -403,10 +427,12 @@ func (ln tcpKeepAliveListener) Accept() (net.Conn, error) {
 		return nil, err
 	}
 
+	// 设置当前的连接为keepalive
 	if err := tc.SetKeepAlive(true); err != nil {
 		return nil, err
 	}
 
+	// TODO 这里设置为3分钟是什么意思？
 	if err := tc.SetKeepAlivePeriod(3 * time.Minute); err != nil {
 		// Some systems, such as OpenBSD, have no user-settable per-socket TCP
 		// keepalive options.
@@ -460,8 +486,10 @@ func buildListener(ctx context.Context, entryPoint *static.EntryPoint) (net.List
 		return nil, fmt.Errorf("error opening listener: %w", err)
 	}
 
+	// 强制转为TCP Keepalive连接，里面对于每个连接都设置的keepalive
 	listener = tcpKeepAliveListener{listener.(*net.TCPListener)}
 
+	// TODO 如果设置了代理协议，那么需要处理代理协议相关的东西
 	if entryPoint.ProxyProtocol != nil {
 		listener, err = buildProxyProtocolListener(ctx, entryPoint, listener)
 		if err != nil {
@@ -477,6 +505,7 @@ func newConnectionTracker() *connectionTracker {
 	}
 }
 
+// TODO 连接追踪是如何设计的？
 type connectionTracker struct {
 	conns map[net.Conn]struct{}
 	lock  sync.RWMutex
@@ -542,11 +571,17 @@ type stoppableServer interface {
 
 type httpServer struct {
 	Server    stoppableServer
-	Forwarder *httpForwarder
-	Switcher  *middlewares.HTTPHandlerSwitcher
+	Forwarder *httpForwarder                   // TODO 看起来是用于转发流量
+	Switcher  *middlewares.HTTPHandlerSwitcher // TODO 如何理解这玩意？
 }
 
-func createHTTPServer(ctx context.Context, ln net.Listener, configuration *static.EntryPoint, withH2c bool, reqDecorator *requestdecorator.RequestDecorator) (*httpServer, error) {
+func createHTTPServer(
+	ctx context.Context,
+	ln net.Listener,
+	configuration *static.EntryPoint,
+	withH2c bool,
+	reqDecorator *requestdecorator.RequestDecorator,
+) (*httpServer, error) {
 	if configuration.HTTP2.MaxConcurrentStreams < 0 {
 		return nil, errors.New("max concurrent streams value must be greater than or equal to zero")
 	}
@@ -656,6 +691,7 @@ func getConnKey(conn net.Conn) string {
 }
 
 func newTrackedConnection(conn tcp.WriteCloser, tracker *connectionTracker) *trackedConnection {
+	// TODO 如何追踪当前的连接？
 	tracker.AddConnection(conn)
 	return &trackedConnection{
 		WriteCloser: conn,

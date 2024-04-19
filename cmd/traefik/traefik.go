@@ -58,7 +58,7 @@ func main() {
 Complete documentation is available at https://traefik.io`,
 		Configuration: tConfig,
 		Resources:     loaders,
-		// 启动Traefik服务
+		// TODO 启动Traefik服务
 		Run: func(_ []string) error {
 			return runCmd(&tConfig.Configuration)
 		},
@@ -124,20 +124,24 @@ func runCmd(staticConfiguration *static.Configuration) error {
 	// TODO 似乎是在给Traefik发送一些统计数据
 	stats(staticConfiguration)
 
+	// TODO 初始化TraefikServer
 	svr, err := setupServer(staticConfiguration)
 	if err != nil {
 		return err
 	}
 
+	// 接收SIGINT, SIGTERM信号
 	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 
 	if staticConfiguration.Ping != nil {
 		staticConfiguration.Ping.WithContext(ctx)
 	}
 
+	// 启动Traefik Server
 	svr.Start(ctx)
 	defer svr.Close()
 
+	// TODO go 操作Systemd
 	sent, err := daemon.SdNotify(false, "READY=1")
 	if !sent && err != nil {
 		log.WithoutContext().Errorf("Failed to notify: %v", err)
@@ -169,6 +173,7 @@ func runCmd(staticConfiguration *static.Configuration) error {
 		})
 	}
 
+	// 等待Traefik Server结束
 	svr.Wait()
 	log.WithoutContext().Info("Shutting down")
 	return nil
@@ -189,24 +194,30 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 
 	// ACME
 
+	// TODO TLSManager是怎么封装的？
 	tlsManager := traefiktls.NewManager()
+	// TODO httpChallenge是什么？
 	httpChallengeProvider := acme.NewChallengeHTTP()
 
+	// TODO 这里在干嘛？
 	tlsChallengeProvider := acme.NewChallengeTLSALPN()
 	err = providerAggregator.AddProvider(tlsChallengeProvider)
 	if err != nil {
 		return nil, err
 	}
 
+	// TODO ACME学习
 	acmeProviders := initACMEProvider(staticConfiguration, &providerAggregator, tlsManager, httpChallengeProvider, tlsChallengeProvider)
 
 	// Entrypoints
 
+	// TODO TCP EntryPoint实现
 	serverEntryPointsTCP, err := server.NewTCPEntryPoints(staticConfiguration.EntryPoints, staticConfiguration.HostResolver)
 	if err != nil {
 		return nil, err
 	}
 
+	// TODO UDP EntryPoint实现
 	serverEntryPointsUDP, err := server.NewUDPEntryPoints(staticConfiguration.EntryPoints)
 	if err != nil {
 		return nil, err
@@ -216,12 +227,14 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 		log.WithoutContext().Warn("Traefik Pilot has been removed.")
 	}
 
+	// 启用Traefik的API
 	if staticConfiguration.API != nil {
 		version.DisableDashboardAd = staticConfiguration.API.DisableDashboardAd
 	}
 
 	// Plugins
 
+	// TODO 插件原理
 	pluginBuilder, err := createPluginBuilder(staticConfiguration)
 	if err != nil {
 		log.WithoutContext().WithError(err).Error("Plugins are disabled because an error has occurred.")
@@ -259,13 +272,17 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 	// Router factory
 
 	accessLog := setupAccessLog(staticConfiguration.AccessLog)
+	// TODO 和OTLP 链路追踪有关？
 	tracer := setupTracing(staticConfiguration.Tracing)
 
+	// TODO 中间件？
 	chainBuilder := middleware.NewChainBuilder(metricsRegistry, accessLog, tracer)
+	// TODO 路由？
 	routerFactory := server.NewRouterFactory(*staticConfiguration, managerFactory, tlsManager, chainBuilder, pluginBuilder, metricsRegistry)
 
 	// Watcher
 
+	// 配置动态发现
 	watcher := server.NewConfigurationWatcher(
 		routinesPool,
 		providerAggregator,
@@ -273,7 +290,7 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 		"internal",
 	)
 
-	// TLS
+	// TLS TODO 这里是在干嘛？动态加载证书？
 	watcher.AddListener(func(conf dynamic.Configuration) {
 		ctx := context.Background()
 		tlsManager.UpdateConfigs(ctx, conf.TLS.Stores, conf.TLS.Options, conf.TLS.Certificates)
@@ -291,6 +308,7 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 	})
 
 	// Server Transports
+	// TODO 似乎是在动态配置HTTPServerTransport
 	watcher.AddListener(func(conf dynamic.Configuration) {
 		roundTripperManager.Update(conf.HTTP.ServersTransports)
 	})

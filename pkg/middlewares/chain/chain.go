@@ -14,6 +14,7 @@ const (
 	typeName = "Chain"
 )
 
+// TODO 如何理解这玩意？看起来也是一个中间件
 type chainBuilder interface {
 	BuildChain(ctx context.Context, middlewares []string) *alice.Chain
 }
