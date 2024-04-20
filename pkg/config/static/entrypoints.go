@@ -11,7 +11,8 @@ import (
 
 // EntryPoint holds the entry point configuration.
 type EntryPoint struct {
-	// 这玩意其实就是TCP Server的监听地址，譬如 :8080, 172.30.3.120:8080, 0.0.0.0:8080等
+	// 1、这玩意其实就是TCP Server的监听地址，譬如 :8080, 172.30.3.120:8080, 0.0.0.0:8080等
+	// 2、当然，这玩意其实也可以配置需要使用的协议，如果不配置，默认使用TCP协议。如果需要，可以这么配置 :8080/tcp, 172.30.3.120:8080/tcp  :8080/udp, 172.30.3.120:8080/udp
 	Address          string                `description:"Entry point address." json:"address,omitempty" toml:"address,omitempty" yaml:"address,omitempty"`
 	Transport        *EntryPointsTransport `description:"Configures communication between clients and Traefik." json:"transport,omitempty" toml:"transport,omitempty" yaml:"transport,omitempty" export:"true"`
 	ProxyProtocol    *ProxyProtocol        `description:"Proxy-Protocol configuration." json:"proxyProtocol,omitempty" toml:"proxyProtocol,omitempty" yaml:"proxyProtocol,omitempty" label:"allowEmpty" file:"allowEmpty" export:"true"`

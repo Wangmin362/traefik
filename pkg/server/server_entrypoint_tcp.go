@@ -70,7 +70,7 @@ type httpForwarder struct {
 func newHTTPForwarder(ln net.Listener) *httpForwarder {
 	return &httpForwarder{
 		Listener: ln,
-		connChan: make(chan net.Conn),
+		connChan: make(chan net.Conn), // 没有缓冲
 		errChan:  make(chan error),
 	}
 }
@@ -101,19 +101,23 @@ func NewTCPEntryPoints(entryPointsConfig static.EntryPoints, hostResolverConfig 
 		}))
 	}
 
+	// 解析配置文件，把用户配置的入口点，一个个实力换位TCPEntryPoint
 	serverEntryPointsTCP := make(TCPEntryPoints)
 	for entryPointName, config := range entryPointsConfig {
+		// 获取当前入口点的协议，要么是TCP，要么是UDP
 		protocol, err := config.GetProtocol()
 		if err != nil {
 			return nil, fmt.Errorf("error while building entryPoint %s: %w", entryPointName, err)
 		}
 
+		// 这里实在处理TCP入口点，因此直接忽略除了TCP以外的其他任何协议
 		if protocol != "tcp" {
 			continue
 		}
 
 		ctx := log.With(context.Background(), log.Str(log.EntryPointName, entryPointName))
 
+		// 实例化TCP入口点
 		serverEntryPointsTCP[entryPointName], err = NewTCPEntryPoint(ctx, config, hostResolverConfig)
 		if err != nil {
 			return nil, fmt.Errorf("error while building entryPoint %s: %w", entryPointName, err)
@@ -124,6 +128,7 @@ func NewTCPEntryPoints(entryPointsConfig static.EntryPoints, hostResolverConfig 
 
 // Start the server entry points.
 func (eps TCPEntryPoints) Start() {
+	// 挨个在协程当中启动各个入口点
 	for entryPointName, serverEntryPoint := range eps {
 		ctx := log.With(context.Background(), log.Str(log.EntryPointName, entryPointName))
 		go serverEntryPoint.Start(ctx)
@@ -160,18 +165,27 @@ func (eps TCPEntryPoints) Switch(routersTCP map[string]*tcprouter.Router) {
 // TCPEntryPoint is the TCP server.
 // TODO 中间件是怎么在入口点中体现的？
 type TCPEntryPoint struct {
-	listener               net.Listener                 // Traefik将来会针对每一个TCP入口点启动一个Listener，监听端口流量
-	switcher               *tcp.HandlerSwitcher         // 其实就是用于获取Router的玩意，然后根据当前请求在Router中找到最合适的一个路由处理流量
-	transportConfiguration *static.EntryPointsTransport // 入口点的静态配置
-	tracker                *connectionTracker           // TODO 应该适合链路追踪有关管的东西
-	httpServer             *httpServer
-	httpsServer            *httpServer
+	// Traefik将来会针对每一个TCP入口点启动一个Listener，监听端口流量
+	listener net.Listener
+	// 1、其实就是用于获取Router的玩意，然后根据当前请求在Router中找到最合适的一个路由处理流量
+	// 2、其实可以简单的理解为就是Router，当一个TCP连接进来之后，Router需要负责根据用户配置的路由匹配一个最合适的路由，并把流量转发给对应的服务
+	switcher *tcp.HandlerSwitcher
+	// 入口点的静态配置
+	transportConfiguration *static.EntryPointsTransport
+	// TODO 应该是和链路追踪有关管的东西
+	tracker    *connectionTracker
+	httpServer *httpServer
+	// TODO 为什么HttpsServer可以直接使用HTTPServer? 我猜测实在Listener会进行区分，配置证书
+	httpsServer *httpServer
 
 	http3Server *http3server
 }
 
 // NewTCPEntryPoint creates a new TCPEntryPoint.
-func NewTCPEntryPoint(ctx context.Context, configuration *static.EntryPoint, hostResolverConfig *types.HostResolverConfig) (*TCPEntryPoint, error) {
+func NewTCPEntryPoint(ctx context.Context,
+	configuration *static.EntryPoint, // 可以理解为用户配置的静态文件
+	hostResolverConfig *types.HostResolverConfig, // TODO 这玩意有啥用？
+) (*TCPEntryPoint, error) {
 	// 实例化一个连接追踪器
 	tracker := newConnectionTracker()
 
@@ -188,6 +202,7 @@ func NewTCPEntryPoint(ctx context.Context, configuration *static.EntryPoint, hos
 	// TODO 似乎是自己做域名解析
 	reqDecorator := requestdecorator.New(hostResolverConfig)
 
+	// TODO 实例化一个HTTPServer
 	httpServer, err := createHTTPServer(ctx, listener, configuration, true, reqDecorator)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing http server: %w", err)
@@ -195,11 +210,13 @@ func NewTCPEntryPoint(ctx context.Context, configuration *static.EntryPoint, hos
 
 	rt.SetHTTPForwarder(httpServer.Forwarder)
 
+	// TODO 实例化一个HTTPSServer
 	httpsServer, err := createHTTPServer(ctx, listener, configuration, false, reqDecorator)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing https server: %w", err)
 	}
 
+	// TODO 实例化一个HTTP3Server
 	h3Server, err := newHTTP3Server(ctx, configuration, httpsServer)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing http3 server: %w", err)
@@ -207,6 +224,7 @@ func NewTCPEntryPoint(ctx context.Context, configuration *static.EntryPoint, hos
 
 	rt.SetHTTPSForwarder(httpsServer.Forwarder)
 
+	// 其实就是Router
 	tcpSwitcher := &tcp.HandlerSwitcher{}
 	tcpSwitcher.Switch(rt)
 
@@ -577,10 +595,10 @@ type httpServer struct {
 
 func createHTTPServer(
 	ctx context.Context,
-	ln net.Listener,
-	configuration *static.EntryPoint,
-	withH2c bool,
-	reqDecorator *requestdecorator.RequestDecorator,
+	ln net.Listener, // 入口点监听器
+	configuration *static.EntryPoint, // 入口点的静态配置
+	withH2c bool, // 这个参数似乎就是用于区分当前创建的是HTTPServer还是HTTPSServer。 withH2c=true则是创建HTTPServer，否则则创建HTTPServer
+	reqDecorator *requestdecorator.RequestDecorator, // TODO 似乎是用于给请求上下文增加CNAME相关东西
 ) (*httpServer, error) {
 	if configuration.HTTP2.MaxConcurrentStreams < 0 {
 		return nil, errors.New("max concurrent streams value must be greater than or equal to zero")
@@ -609,7 +627,7 @@ func createHTTPServer(
 		handler = http.AllowQuerySemicolons(handler)
 	}
 
-	if withH2c {
+	if withH2c { // True则是创建HttpServer，否则创建的是HttpsServer
 		handler = h2c.NewHandler(handler, &http2.Server{
 			MaxConcurrentStreams: uint32(configuration.HTTP2.MaxConcurrentStreams),
 		})
@@ -627,6 +645,8 @@ func createHTTPServer(
 		WriteTimeout: time.Duration(configuration.Transport.RespondingTimeouts.WriteTimeout),
 		IdleTimeout:  time.Duration(configuration.Transport.RespondingTimeouts.IdleTimeout),
 	}
+
+	// TODO 配置keepalive
 	if debugConnection || (configuration.Transport != nil && (configuration.Transport.KeepAliveMaxTime > 0 || configuration.Transport.KeepAliveMaxRequests > 0)) {
 		serverHTTP.ConnContext = func(ctx context.Context, c net.Conn) context.Context {
 			cState := &connState{Start: time.Now()}
@@ -652,6 +672,7 @@ func createHTTPServer(
 	prevConnContext := serverHTTP.ConnContext
 	serverHTTP.ConnContext = func(ctx context.Context, c net.Conn) context.Context {
 		// This adds an empty struct in order to store a RoundTripper in the ConnContext in case of Kerberos or NTLM.
+		// TODO 这里是在干嘛？
 		ctx = service.AddTransportOnContext(ctx)
 		if prevConnContext != nil {
 			return prevConnContext(ctx, c)
@@ -674,6 +695,7 @@ func createHTTPServer(
 
 	listener := newHTTPForwarder(ln)
 	go func() {
+		// 启动HTTPServer，等待客户端连接
 		err := serverHTTP.Serve(listener)
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.FromContext(ctx).Errorf("Error while starting server: %v", err)

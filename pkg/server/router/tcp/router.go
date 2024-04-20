@@ -31,6 +31,7 @@ type Router struct {
 	// Forwarder handlers.
 	// httpForwarder handles all HTTP requests.
 	// TODO 这玩意有啥用？
+	// 1、Router其实就是根据用户配置不同的路由，把流量导入到不同的服务，也就是核心功能还是转发流量
 	httpForwarder tcp.Handler
 	// httpsForwarder handles (indirectly through muxerHTTPS, or directly) all HTTPS requests.
 	httpsForwarder tcp.Handler
