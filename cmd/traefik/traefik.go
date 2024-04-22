@@ -87,7 +87,9 @@ Complete documentation is available at https://traefik.io`,
 	logrus.Exit(0)
 }
 
-func runCmd(staticConfiguration *static.Configuration) error {
+func runCmd(
+	staticConfiguration *static.Configuration, // 静态配置
+) error {
 	// TODO 日志
 	configureLogging(staticConfiguration)
 
@@ -147,6 +149,7 @@ func runCmd(staticConfiguration *static.Configuration) error {
 		log.WithoutContext().Errorf("Failed to notify: %v", err)
 	}
 
+	// systemD相关的东西
 	t, err := daemon.SdWatchdogEnabled(false)
 	if err != nil {
 		log.WithoutContext().Errorf("Could not enable Watchdog: %v", err)
@@ -180,13 +183,13 @@ func runCmd(staticConfiguration *static.Configuration) error {
 }
 
 func setupServer(staticConfiguration *static.Configuration) (*server.Server, error) {
-	// TODO 这里是在干嘛？
+	// TODO 这里是在干嘛？ Provider可以理解为不同的平台，比如K8S，Docker，File等
 	providerAggregator := aggregator.NewProviderAggregator(*staticConfiguration.Providers)
 
 	ctx := context.Background()
 	routinesPool := safe.NewPool(ctx) // 实例化协程池
 
-	// adds internal provider TODO 这里应按Traefik内部的一些东西
+	// adds internal provider TODO 这里应增加Traefik内部的一些东西
 	err := providerAggregator.AddProvider(traefik.New(*staticConfiguration))
 	if err != nil {
 		return nil, err
@@ -235,6 +238,12 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 	// Plugins
 
 	// TODO 插件原理
+	// 1、加载本地插件和远端插件到内存中
+	// 2、远端插件指的是Traefik插件仓库中的插件
+	// 3、本地插件指的是用户自定义的插件
+	// 4、加载插件的时候，会根据插件的配置信息，实例化插件
+	// 5、Traefik的插件支持Provider和Middleware两种类型
+	// TODO Traefik本身自带的插件在哪里加载？
 	pluginBuilder, err := createPluginBuilder(staticConfiguration)
 	if err != nil {
 		log.WithoutContext().WithError(err).Error("Plugins are disabled because an error has occurred.")
@@ -242,6 +251,7 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 
 	// Providers plugins
 
+	// TODO 加载Provider插件
 	for name, conf := range staticConfiguration.Providers.Plugin {
 		if pluginBuilder == nil {
 			break
@@ -265,8 +275,11 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 
 	// Service manager factory
 
+	// TODO
 	roundTripperManager := service.NewRoundTripperManager()
+	// TODO
 	acmeHTTPHandler := getHTTPChallengeHandler(acmeProviders, httpChallengeProvider)
+	// TODO
 	managerFactory := service.NewManagerFactory(*staticConfiguration, routinesPool, metricsRegistry, roundTripperManager, acmeHTTPHandler)
 
 	// Router factory

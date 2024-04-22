@@ -22,13 +22,18 @@ type Builder struct {
 }
 
 // NewBuilder creates a new Builder.
-func NewBuilder(client *Client, plugins map[string]Descriptor, localPlugins map[string]LocalDescriptor) (*Builder, error) {
+func NewBuilder(
+	client *Client, // 远端插件的HTTP下载客户按
+	plugins map[string]Descriptor, // 远端插件
+	localPlugins map[string]LocalDescriptor, // 本地插件
+) (*Builder, error) {
 	pb := &Builder{
 		middlewareBuilders: map[string]*middlewareBuilder{},
 		providerBuilders:   map[string]providerBuilder{},
 	}
 
-	for pName, desc := range plugins {
+	for pName, desc := range plugins { // 遍历远端插件
+		// 读取插件的配置
 		manifest, err := client.ReadManifest(desc.ModuleName)
 		if err != nil {
 			_ = client.ResetAll()
@@ -36,6 +41,7 @@ func NewBuilder(client *Client, plugins map[string]Descriptor, localPlugins map[
 		}
 
 		logger := log.WithoutContext().WithFields(logrus.Fields{"plugin": "plugin-" + pName, "module": desc.ModuleName})
+		// TODO 加载插件
 		i := interp.New(interp.Options{
 			GoPath: client.GoPath(),
 			Env:    os.Environ(),
@@ -77,6 +83,7 @@ func NewBuilder(client *Client, plugins map[string]Descriptor, localPlugins map[
 		}
 	}
 
+	// 加载本地插件
 	for pName, desc := range localPlugins {
 		manifest, err := ReadManifest(localGoPath, desc.ModuleName)
 		if err != nil {
@@ -84,6 +91,7 @@ func NewBuilder(client *Client, plugins map[string]Descriptor, localPlugins map[
 		}
 
 		logger := log.WithoutContext().WithFields(logrus.Fields{"plugin": "plugin-" + pName, "module": desc.ModuleName})
+		// 加载本地插件
 		i := interp.New(interp.Options{
 			GoPath: localGoPath,
 			Env:    os.Environ(),

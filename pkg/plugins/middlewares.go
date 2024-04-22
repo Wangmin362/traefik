@@ -32,8 +32,8 @@ func (b Builder) Build(pName string, config map[string]interface{}, middlewareNa
 }
 
 type middlewareBuilder struct {
-	fnNew          reflect.Value
-	fnCreateConfig reflect.Value
+	fnNew          reflect.Value // 插件实例，Traefik目前支持两种类型的插件，分别是中间件和提供者
+	fnCreateConfig reflect.Value // 插件配置
 }
 
 func newMiddlewareBuilder(i *interp.Interpreter, basePkg, imp string) (*middlewareBuilder, error) {
@@ -41,6 +41,7 @@ func newMiddlewareBuilder(i *interp.Interpreter, basePkg, imp string) (*middlewa
 		basePkg = strings.ReplaceAll(path.Base(imp), "-", "_")
 	}
 
+	// 中间件的编写，因该是必须要有固定的方法，New和CreateConfig
 	fnNew, err := i.Eval(basePkg + `.New`)
 	if err != nil {
 		return nil, fmt.Errorf("failed to eval New: %w", err)

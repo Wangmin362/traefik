@@ -43,6 +43,7 @@ type ClientOptions struct {
 }
 
 // Client a Traefik plugins client.
+// TODO 为什么Traefik的插件要设置为自己去下载的方式？ 用户直接编译为二进制加载进来不可以么？
 type Client struct {
 	HTTPClient *http.Client
 	baseURL    *url.URL
@@ -55,38 +56,45 @@ type Client struct {
 }
 
 // NewClient creates a new Traefik plugins client.
+// 创建一个客户端，用于从仓库中下载Traefik的插件
 func NewClient(opts ClientOptions) (*Client, error) {
+	// URL为Traefik的插件的仓库地址
 	baseURL, err := url.Parse(pluginsURL)
 	if err != nil {
 		return nil, err
 	}
 
+	// ./plugins-storage/sources
 	sourcesRootPath := filepath.Join(filepath.FromSlash(opts.Output), sourcesFolder)
+	// 清空当前的目录
 	err = resetDirectory(sourcesRootPath)
 	if err != nil {
 		return nil, err
 	}
 
+	// 创建一个临时目录
 	goPath, err := os.MkdirTemp(sourcesRootPath, "gop-*")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GoPath: %w", err)
 	}
 
+	// ./plugins-storage/archives
 	archivesPath := filepath.Join(filepath.FromSlash(opts.Output), archivesFolder)
+	// 创建./plugins-storage/archives目录
 	err = os.MkdirAll(archivesPath, 0o755)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create archives directory %s: %w", archivesPath, err)
 	}
 
 	return &Client{
-		HTTPClient: &http.Client{Timeout: 10 * time.Second},
-		baseURL:    baseURL,
+		HTTPClient: &http.Client{Timeout: 10 * time.Second}, // 10s超时
+		baseURL:    baseURL,                                 // Traefik的插件的仓库地址
 
-		archives:  archivesPath,
-		stateFile: filepath.Join(archivesPath, stateFilename),
+		archives:  archivesPath,                               // ./plugins-storage/archives
+		stateFile: filepath.Join(archivesPath, stateFilename), // ./plugins-storage/archives/state.json
 
-		goPath:  goPath,
-		sources: filepath.Join(goPath, goPathSrc),
+		goPath:  goPath,                           // ./plugins-storage/sources/gop-*
+		sources: filepath.Join(goPath, goPathSrc), // ./plugins-storage/sources/gop-*/src
 	}, nil
 }
 
@@ -102,6 +110,7 @@ func (c *Client) ReadManifest(moduleName string) (*Manifest, error) {
 
 // ReadManifest reads a plugin manifest.
 func ReadManifest(goPath, moduleName string) (*Manifest, error) {
+	// 读取./plugins-local/src/<moduleName>/.traefik.yml
 	p := filepath.Join(goPath, goPathSrc, filepath.FromSlash(moduleName), pluginManifest)
 
 	file, err := os.Open(p)
@@ -344,6 +353,7 @@ func (c *Client) CleanArchives(plugins map[string]Descriptor) error {
 }
 
 // WriteState writes the plugins state files.
+// 把插件配置保存起来
 func (c *Client) WriteState(plugins map[string]Descriptor) error {
 	m := make(map[string]string)
 
