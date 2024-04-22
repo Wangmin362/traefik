@@ -84,6 +84,7 @@ func (r *Router) GetTLSGetClientInfo() func(info *tls.ClientHelloInfo) (*tls.Con
 }
 
 // ServeTCP forwards the connection to the right TCP/HTTP handler.
+// 1、用于把流量导入到合适的TCP服务或者HTTP服务
 func (r *Router) ServeTCP(conn tcp.WriteCloser) {
 	// Handling Non-TLS TCP connection early if there is neither HTTP(S) nor TLS routers on the entryPoint,
 	// and if there is at least one non-TLS TCP router.

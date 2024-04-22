@@ -41,6 +41,7 @@ func (r *RequestDecorator) ServeHTTP(rw http.ResponseWriter, req *http.Request, 
 	reqt := req.WithContext(context.WithValue(req.Context(), canonicalKey, host))
 
 	if r.hostResolver != nil && r.hostResolver.CnameFlattening {
+		// TODO CNAME Flatten动作是什么动作？干什么的？
 		flatHost := r.hostResolver.CNAMEFlatten(reqt.Context(), host)
 		reqt = reqt.WithContext(context.WithValue(reqt.Context(), flattenKey, flatHost))
 	}

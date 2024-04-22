@@ -187,6 +187,7 @@ func (x *XForwarded) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// TODO 这里干了啥？
 	x.rewrite(r)
 
 	x.next.ServeHTTP(w, r)

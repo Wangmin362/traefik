@@ -177,6 +177,7 @@ type KerberosRoundTripper struct {
 	OriginalRoundTripper http.RoundTripper
 }
 
+// TODO 这玩意拿来干嘛的？
 type stickyRoundTripper struct {
 	RoundTripper http.RoundTripper
 }

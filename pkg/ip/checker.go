@@ -15,6 +15,7 @@ type Checker struct {
 }
 
 // NewChecker builds a new Checker given a list of CIDR-Strings to trusted IPs.
+// 用于解析用户设置的信任IP为IP地址以及合适的子网
 func NewChecker(trustedIPs []string) (*Checker, error) {
 	if len(trustedIPs) == 0 {
 		return nil, errors.New("no trusted IPs provided")

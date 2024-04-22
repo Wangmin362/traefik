@@ -61,6 +61,10 @@ type connState struct {
 }
 
 // TODO 这玩意是干嘛用的？ 看名字似乎是用来转发流量的
+// 1、HTTPForwarder本质上是一个http.Handler，可以用来处理HTTP流量。但是HTTPForward抽象的功能非常简单，它仅仅是为了转发流量，并不直接
+// 处理流量，因此在实现http.Handler时，直接把连接保存到了channel当中。
+// 2、HTTPForwarder本质上还是一个Listener，虽然是组合了http.Listener，但是却自己实现了Accept方法。http.Listener可以理解为一个HTTP
+// Server，用于处理HTTP流量
 type httpForwarder struct {
 	net.Listener               // 既然是HTTP的，那么必然是基于TCP协议的类型。Listener.Accept()获取到的就是网络连接
 	connChan     chan net.Conn // 网络连接channel
@@ -76,7 +80,11 @@ func newHTTPForwarder(ln net.Listener) *httpForwarder {
 }
 
 // ServeTCP uses the connection to serve it later in "Accept".
+// ServerTCP是有外部调用的函数，一旦入口点的连接经过路由判定之后，如果认为当前的请求可以进入到HTTP服务，就会调用这个Handler处理连接
+// 此时，HTTPForwarder就会直接把请求放到channel中。而HTTPForward本质上就是抽象的一个HTTPServer,因此会通过Accept函数消费这里面的
+// 连接，并使用HTTP协议解析连接中的数据
 func (h *httpForwarder) ServeTCP(conn tcp.WriteCloser) {
+	// 直接把连接写入到channel，然后直接退出
 	h.connChan <- conn
 }
 
@@ -110,7 +118,7 @@ func NewTCPEntryPoints(entryPointsConfig static.EntryPoints, hostResolverConfig 
 			return nil, fmt.Errorf("error while building entryPoint %s: %w", entryPointName, err)
 		}
 
-		// 这里实在处理TCP入口点，因此直接忽略除了TCP以外的其他任何协议
+		// 这里是在处理TCP入口点，因此直接忽略除了TCP以外的其他任何协议
 		if protocol != "tcp" {
 			continue
 		}
@@ -197,6 +205,7 @@ func NewTCPEntryPoint(ctx context.Context,
 
 	// TODO 理解里面的路由设计
 	// TODO 为什么这里只初始化了HTTPForwarder, HTTPSForwarder
+	// TODO 为什么这里的初始化这么简单？
 	rt := &tcprouter.Router{}
 
 	// TODO 似乎是自己做域名解析
@@ -245,6 +254,7 @@ func (e *TCPEntryPoint) Start(ctx context.Context) {
 	logger := log.FromContext(ctx)
 	logger.Debug("Starting TCP Server")
 
+	// todo httpServer和httpsServer在哪里使用？
 	if e.http3Server != nil { // 如果支持http3，就启动http3 Server
 		go func() { _ = e.http3Server.Start() }()
 	}
@@ -598,12 +608,13 @@ func createHTTPServer(
 	ln net.Listener, // 入口点监听器
 	configuration *static.EntryPoint, // 入口点的静态配置
 	withH2c bool, // 这个参数似乎就是用于区分当前创建的是HTTPServer还是HTTPSServer。 withH2c=true则是创建HTTPServer，否则则创建HTTPServer
-	reqDecorator *requestdecorator.RequestDecorator, // TODO 似乎是用于给请求上下文增加CNAME相关东西
+	reqDecorator *requestdecorator.RequestDecorator, // 用于给请求上下文增加CNAME相关东西
 ) (*httpServer, error) {
 	if configuration.HTTP2.MaxConcurrentStreams < 0 {
 		return nil, errors.New("max concurrent streams value must be greater than or equal to zero")
 	}
 
+	// 兜底策略，当没有任何一个规则匹配到当前请求，只能转发给NotFoundHandler
 	httpSwitcher := middlewares.NewHandlerSwitcher(router.BuildDefaultHTTPRouter())
 
 	next, err := alice.New(requestdecorator.WrapHandler(reqDecorator)).Then(httpSwitcher)
@@ -612,22 +623,27 @@ func createHTTPServer(
 	}
 
 	var handler http.Handler
+	// 用于处理信任IP地址列表
 	handler, err = forwardedheaders.NewXForwarded(
-		configuration.ForwardedHeaders.Insecure,
-		configuration.ForwardedHeaders.TrustedIPs,
+		configuration.ForwardedHeaders.Insecure,   // True表示信任所有的IP地址
+		configuration.ForwardedHeaders.TrustedIPs, // IP地址信任列表
 		next)
 	if err != nil {
 		return nil, err
 	}
 
+	// 1、TODO 有#号的URL有什么特殊的意义？为什么要直接拒绝这样的请求？
 	handler = denyFragment(handler)
 	if configuration.HTTP.EncodeQuerySemicolons {
+		// 用于把URL中的分号替换为标准的编码
 		handler = encodeQuerySemicolons(handler)
 	} else {
+		// URL多参数查询一般使用&符号进行分隔，但是在老版本的HTTP协议中，可能使用;分号分隔多个参数，这里
 		handler = http.AllowQuerySemicolons(handler)
 	}
 
 	if withH2c { // True则是创建HttpServer，否则创建的是HttpsServer
+		// TODO 这里似乎是一些比较高级的用法
 		handler = h2c.NewHandler(handler, &http2.Server{
 			MaxConcurrentStreams: uint32(configuration.HTTP2.MaxConcurrentStreams),
 		})
@@ -635,6 +651,7 @@ func createHTTPServer(
 
 	debugConnection := os.Getenv(debugConnectionEnv) != ""
 	if debugConnection || (configuration.Transport != nil && (configuration.Transport.KeepAliveMaxTime > 0 || configuration.Transport.KeepAliveMaxRequests > 0)) {
+		// 处理HTTP Keepalive相关的设置，用户可以设置HTTP长连接每个连接最多支持发送多少个HTTP请求。也可以设置当前连接最长生存时间
 		handler = newKeepAliveMiddleware(handler, configuration.Transport.KeepAliveMaxRequests, configuration.Transport.KeepAliveMaxTime)
 	}
 
@@ -684,6 +701,7 @@ func createHTTPServer(
 	// Also keeping behavior the same as
 	// https://cs.opensource.google/go/go/+/refs/tags/go1.17.7:src/net/http/server.go;l=3262
 	if !strings.Contains(os.Getenv("GODEBUG"), "http2server=0") {
+		// 配置Server的部分参数
 		err = http2.ConfigureServer(serverHTTP, &http2.Server{
 			MaxConcurrentStreams: uint32(configuration.HTTP2.MaxConcurrentStreams),
 			NewWriteScheduler:    func() http2.WriteScheduler { return http2.NewPriorityWriteScheduler(nil) },
@@ -695,7 +713,8 @@ func createHTTPServer(
 
 	listener := newHTTPForwarder(ln)
 	go func() {
-		// 启动HTTPServer，等待客户端连接
+		// 启动HTTPServer，一旦用户的连接从入口点进来，经过路由判定之后需要进入HTTP服务，连接就会被转发到这里
+		// TODO 代理的功能怎么体现，这里怎么时感觉直接在处理流量，难道不应该是直接把流量转发给后端服务么？
 		err := serverHTTP.Serve(listener)
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.FromContext(ctx).Errorf("Error while starting server: %v", err)
@@ -755,6 +774,7 @@ func encodeQuerySemicolons(h http.Handler) http.Handler {
 // However, it is still possible to send a fragment in the request.
 // In this case, Traefik will encode the '#' character, altering the request's intended meaning.
 // To avoid this behavior, the following function rejects requests that include a fragment in the URL.
+// 1、TODO 有#号的URL有什么特殊的意义？为什么要直接拒绝这样的请求？
 func denyFragment(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		if strings.Contains(req.URL.RawPath, "#") {
