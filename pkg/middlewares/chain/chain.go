@@ -15,6 +15,7 @@ const (
 )
 
 // TODO 如何理解这玩意？看起来也是一个中间件
+// 把给定的中间件构造为一个中间链
 type chainBuilder interface {
 	BuildChain(ctx context.Context, middlewares []string) *alice.Chain
 }

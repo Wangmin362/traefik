@@ -42,13 +42,20 @@ type Service struct {
 
 // Router holds the router configuration.
 type Router struct {
-	EntryPoints []string         `json:"entryPoints,omitempty" toml:"entryPoints,omitempty" yaml:"entryPoints,omitempty" export:"true"`
-	Middlewares []string         `json:"middlewares,omitempty" toml:"middlewares,omitempty" yaml:"middlewares,omitempty" export:"true"`
-	Service     string           `json:"service,omitempty" toml:"service,omitempty" yaml:"service,omitempty" export:"true"`
-	Rule        string           `json:"rule,omitempty" toml:"rule,omitempty" yaml:"rule,omitempty"`
-	Priority    int              `json:"priority,omitempty" toml:"priority,omitempty,omitzero" yaml:"priority,omitempty" export:"true"`
-	TLS         *RouterTLSConfig `json:"tls,omitempty" toml:"tls,omitempty" yaml:"tls,omitempty" label:"allowEmpty" file:"allowEmpty" kv:"allowEmpty" export:"true"`
-	DefaultRule bool             `json:"-" toml:"-" yaml:"-" label:"-" file:"-"`
+	// 声明当前路由是针对哪个入口点的路由，如果没有声明，那么当前路由将会匹配所有的入口点
+	EntryPoints []string `json:"entryPoints,omitempty" toml:"entryPoints,omitempty" yaml:"entryPoints,omitempty" export:"true"`
+	// 声明当前路由需要使用的中间件
+	Middlewares []string `json:"middlewares,omitempty" toml:"middlewares,omitempty" yaml:"middlewares,omitempty" export:"true"`
+	// 当前路由的后端服务
+	Service string `json:"service,omitempty" toml:"service,omitempty" yaml:"service,omitempty" export:"true"`
+	// 当前路由的匹配规则
+	Rule string `json:"rule,omitempty" toml:"rule,omitempty" yaml:"rule,omitempty"`
+	// 如果有多个路由同时匹配，那么可以指定优先级，优先级高的路由优先匹配
+	Priority int `json:"priority,omitempty" toml:"priority,omitempty,omitzero" yaml:"priority,omitempty" export:"true"`
+	// TODO 这里的TLS配置是干嘛的？
+	TLS *RouterTLSConfig `json:"tls,omitempty" toml:"tls,omitempty" yaml:"tls,omitempty" label:"allowEmpty" file:"allowEmpty" kv:"allowEmpty" export:"true"`
+	// TODO 默认规则是什么？用户可以配置么？
+	DefaultRule bool `json:"-" toml:"-" yaml:"-" label:"-" file:"-"`
 }
 
 // +k8s:deepcopy-gen=true

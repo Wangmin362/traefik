@@ -20,6 +20,7 @@ import (
 )
 
 // RouterFactory the factory of TCP/UDP routers.
+// TODO 这里为什么叫做路由工厂？ 没有看到任何和路由相关的东西？
 type RouterFactory struct {
 	entryPointsTCP []string
 	entryPointsUDP []string
@@ -34,7 +35,8 @@ type RouterFactory struct {
 
 	// 每个请求的处理链，已经配置了公共的日志、链路追踪、指标中间件
 	chainBuilder *middleware.ChainBuilder
-	tlsManager   *tls.Manager
+	// TODO 这玩意是怎么管理TLS证书的？
+	tlsManager *tls.Manager
 }
 
 // NewRouterFactory creates a new RouterFactory.
@@ -79,9 +81,10 @@ func NewRouterFactory(
 func (f *RouterFactory) CreateRouters(rtConf *runtime.Configuration) (map[string]*tcprouter.Router, map[string]udptypes.Handler) {
 	ctx := context.Background()
 
-	// HTTP
+	// HTTP 构建Traefik的内部API处理逻辑
 	serviceManager := f.managerFactory.Build(rtConf)
 
+	// HTTP中间件
 	middlewaresBuilder := middleware.NewBuilder(rtConf.Middlewares, serviceManager, f.pluginBuilder)
 
 	routerManager := router.NewManager(rtConf, serviceManager, middlewaresBuilder, f.chainBuilder, f.metricsRegistry, f.tlsManager)

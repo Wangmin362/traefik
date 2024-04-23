@@ -13,6 +13,9 @@ import (
 )
 
 // GetRoutersByEntryPoints returns all the http routers by entry points name and routers name.
+// 1、找到所有设置了当前指定入口点的路由
+// 2、返回值 第一级key为entryPoint, 第二级key为Route
+// 3、TODO 如果一个路由没有设置入口点，这里就无法匹配命中
 func (c *Configuration) GetRoutersByEntryPoints(ctx context.Context, entryPoints []string, tls bool) map[string]map[string]*RouterInfo {
 	entryPointsRouters := make(map[string]map[string]*RouterInfo)
 
@@ -24,7 +27,9 @@ func (c *Configuration) GetRoutersByEntryPoints(ctx context.Context, entryPoints
 		logger := log.FromContext(log.With(ctx, log.Str(log.RouterName, rtName)))
 
 		entryPointsCount := 0
+		// 获取当前路由所有的入口点
 		for _, entryPointName := range rt.EntryPoints {
+			// 如果当前路由并没有配置指定入口点，增加错误信息
 			if !slices.Contains(entryPoints, entryPointName) {
 				rt.AddError(fmt.Errorf("entryPoint %q doesn't exist", entryPointName), false)
 				logger.WithField(log.EntryPointName, entryPointName).
@@ -32,6 +37,7 @@ func (c *Configuration) GetRoutersByEntryPoints(ctx context.Context, entryPoints
 				continue
 			}
 
+			// 初始化map
 			if _, ok := entryPointsRouters[entryPointName]; !ok {
 				entryPointsRouters[entryPointName] = make(map[string]*RouterInfo)
 			}

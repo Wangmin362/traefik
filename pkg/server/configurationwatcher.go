@@ -15,15 +15,20 @@ import (
 
 // ConfigurationWatcher watches configuration changes.
 type ConfigurationWatcher struct {
+	// 本质上providerAggregator就是一个Provider数组，当需要Provider时，会把活委派给内部的Provider
 	providerAggregator provider.Provider
 
+	// TODO 默认的入口点有什么用？看起来默认的入口点其实就是除了UDP入口点以及Traefik内部入口点以外的所有TCP入口点
 	defaultEntryPoints []string
 
+	// 动态发现消息。docker或者k8s可能会动态增加容器、删减容器
 	allProvidersConfigs chan dynamic.Message
 
+	// 动态配置，这个动态配置极有可能会发生更改
 	newConfigs chan dynamic.Configurations
 
-	requiredProvider       string
+	requiredProvider string
+	// 用于处理动态修改的配置
 	configurationListeners []func(dynamic.Configuration)
 
 	routinesPool *safe.Pool
@@ -34,7 +39,7 @@ func NewConfigurationWatcher(
 	routinesPool *safe.Pool,
 	pvd provider.Provider,
 	defaultEntryPoints []string,
-	requiredProvider string,
+	requiredProvider string, // 其实就是Traefik internal Provider
 ) *ConfigurationWatcher {
 	return &ConfigurationWatcher{
 		providerAggregator:  pvd,
@@ -60,6 +65,7 @@ func (c *ConfigurationWatcher) Stop() {
 }
 
 // AddListener adds a new listener function used when new configuration is provided.
+// 添加Listener，当动态配置发生变更时，会调用所有的Listener
 func (c *ConfigurationWatcher) AddListener(listener func(dynamic.Configuration)) {
 	if c.configurationListeners == nil {
 		c.configurationListeners = make([]func(dynamic.Configuration), 0)

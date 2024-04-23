@@ -60,8 +60,9 @@ func maybeThrottledProvide(prd provider.Provider, defaultDuration time.Duration)
 
 // ProviderAggregator aggregates providers.
 type ProviderAggregator struct {
-	internalProvider          provider.Provider
-	fileProvider              provider.Provider
+	internalProvider provider.Provider
+	fileProvider     provider.Provider
+	// 内部聚集了所有有效的Provider
 	providers                 []provider.Provider
 	providersThrottleDuration time.Duration
 }
@@ -147,7 +148,7 @@ func NewProviderAggregator(conf static.Providers) ProviderAggregator {
 
 func (p *ProviderAggregator) quietAddProvider(provider provider.Provider) {
 	err := p.AddProvider(provider)
-	if err != nil {
+	if err != nil { // 这里直接忽略了错误，因为这个错误并不影响Traefik的运行，也不能因为这个错误让Traefik进程直接退出
 		log.WithoutContext().Errorf("Error while initializing provider %T: %v", provider, err)
 	}
 }
@@ -171,7 +172,7 @@ func (p *ProviderAggregator) AddProvider(provider provider.Provider) error {
 	return nil
 }
 
-// Init the provider.
+// Init the provider. ProviderAggregator本身并没有什么实际的含义，目的及时在一个地方聚集Traefik所有有效的Provider，所以并不需要初始化
 func (p ProviderAggregator) Init() error {
 	return nil
 }

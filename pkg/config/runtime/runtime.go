@@ -17,18 +17,20 @@ const (
 
 // Configuration holds the information about the currently running traefik instance.
 type Configuration struct {
-	Routers        map[string]*RouterInfo        `json:"routers,omitempty"`
-	Middlewares    map[string]*MiddlewareInfo    `json:"middlewares,omitempty"`
-	TCPMiddlewares map[string]*TCPMiddlewareInfo `json:"tcpMiddlewares,omitempty"`
-	Services       map[string]*ServiceInfo       `json:"services,omitempty"`
-	TCPRouters     map[string]*TCPRouterInfo     `json:"tcpRouters,omitempty"`
-	TCPServices    map[string]*TCPServiceInfo    `json:"tcpServices,omitempty"`
-	UDPRouters     map[string]*UDPRouterInfo     `json:"udpRouters,omitempty"`
-	UDPServices    map[string]*UDPServiceInfo    `json:"udpServices,omitempty"`
+	Routers        map[string]*RouterInfo        `json:"routers,omitempty"`        // HTTP 路由信息
+	Middlewares    map[string]*MiddlewareInfo    `json:"middlewares,omitempty"`    // HTTP中间件
+	TCPMiddlewares map[string]*TCPMiddlewareInfo `json:"tcpMiddlewares,omitempty"` // TCP中间件
+	Services       map[string]*ServiceInfo       `json:"services,omitempty"`       // HTTP后端服务
+	TCPRouters     map[string]*TCPRouterInfo     `json:"tcpRouters,omitempty"`     // TCP路由
+	TCPServices    map[string]*TCPServiceInfo    `json:"tcpServices,omitempty"`    // TCP后端服务
+	UDPRouters     map[string]*UDPRouterInfo     `json:"udpRouters,omitempty"`     // UDP路由
+	UDPServices    map[string]*UDPServiceInfo    `json:"udpServices,omitempty"`    // UDP后端服务
 }
 
 // NewConfig returns a Configuration initialized with the given conf. It never returns nil.
+// 把动态配置转为运行时配置
 func NewConfig(conf dynamic.Configuration) *Configuration {
+	// 如果HTTP, TCP, UDP路由一个也没有配置，直接返回为空。
 	if conf.HTTP == nil && conf.TCP == nil && conf.UDP == nil {
 		return &Configuration{}
 	}

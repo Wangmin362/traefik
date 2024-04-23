@@ -7,6 +7,7 @@ import (
 // +k8s:deepcopy-gen=true
 
 // UDPConfiguration contains all the UDP configuration parameters.
+// TODO UDP为什么不能配置中间件？
 type UDPConfiguration struct {
 	Routers  map[string]*UDPRouter  `json:"routers,omitempty" toml:"routers,omitempty" yaml:"routers,omitempty" export:"true"`
 	Services map[string]*UDPService `json:"services,omitempty" toml:"services,omitempty" yaml:"services,omitempty" export:"true"`

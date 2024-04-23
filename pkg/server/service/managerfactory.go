@@ -85,8 +85,11 @@ func NewManagerFactory(
 }
 
 // Build creates a service manager.
+// 构建Traefik的内部API处理逻辑
 func (f *ManagerFactory) Build(configuration *runtime.Configuration) *InternalHandlers {
-	svcManager := NewManager(configuration.Services, f.metricsRegistry, f.routinesPool, f.roundTripperManager)
+	svcManager := NewManager(
+		configuration.Services, // HTTP后端服务
+		f.metricsRegistry, f.routinesPool, f.roundTripperManager)
 
 	var apiHandler http.Handler
 	if f.api != nil { // 只要启用了Dashboard，那么就会初始化这个属性

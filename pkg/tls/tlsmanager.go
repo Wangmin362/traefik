@@ -46,7 +46,8 @@ func getCipherSuites() []string {
 // Manager is the TLS option/store/configuration factory.
 // TODO TLS Manager是如何管理证书的？
 type Manager struct {
-	lock         sync.RWMutex
+	lock sync.RWMutex
+	// TODO 证书存储配置
 	storesConfig map[string]Store
 	stores       map[string]*CertificateStore
 	configs      map[string]Options

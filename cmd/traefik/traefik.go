@@ -184,13 +184,14 @@ func runCmd(
 }
 
 func setupServer(staticConfiguration *static.Configuration) (*server.Server, error) {
-	// 1、把所有的Provider集中到一起，也就是providerAggregator; 2、Provider可以理解为不同的平台，比如K8S，Docker，File等
+	// 1、把所有的Provider集中到一起，也就是providerAggregator;
+	// 2、Provider可以理解为不同的平台，比如K8S，Docker，File等
 	providerAggregator := aggregator.NewProviderAggregator(*staticConfiguration.Providers)
 
 	ctx := context.Background()
 	routinesPool := safe.NewPool(ctx) // 实例化协程池
 
-	// adds internal provider TODO 这里应增加Traefik内部的一些东西
+	// adds internal provider  这里增加了Traefik内部的一些东西
 	err := providerAggregator.AddProvider(traefik.New(*staticConfiguration))
 	if err != nil {
 		return nil, err
@@ -339,6 +340,7 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 	})
 
 	// Switch router
+	// TODO 重点分析
 	watcher.AddListener(switchRouter(routerFactory, serverEntryPointsTCP, serverEntryPointsUDP))
 
 	// Metrics
@@ -408,10 +410,17 @@ func getDefaultsEntrypoints(staticConfiguration *static.Configuration) []string 
 	return defaultEntryPoints
 }
 
-func switchRouter(routerFactory *server.RouterFactory, serverEntryPointsTCP server.TCPEntryPoints, serverEntryPointsUDP server.UDPEntryPoints) func(conf dynamic.Configuration) {
+func switchRouter(
+	routerFactory *server.RouterFactory, // TODO 路由工厂
+	serverEntryPointsTCP server.TCPEntryPoints, // TCP入口点
+	serverEntryPointsUDP server.UDPEntryPoints, // UDP入口点
+) func(conf dynamic.Configuration) {
 	return func(conf dynamic.Configuration) {
-		rtConf := runtime.NewConfig(conf) // TODO 这里在干嘛？
+		// 1、当动态配置发生变动的时候，就会调用到这里，conf为动态配置
+		// 2、runtime.NewConfig(conf)用于把动态配置转为运行时配置，实际上就是重新组织了一遍数据结构  TODO 思考这样坐的好处，为什么不直接使用动态配置？
+		rtConf := runtime.NewConfig(conf)
 
+		// TODO
 		routers, udpRouters := routerFactory.CreateRouters(rtConf)
 
 		serverEntryPointsTCP.Switch(routers)

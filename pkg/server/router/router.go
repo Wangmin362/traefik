@@ -61,6 +61,7 @@ func NewManager(conf *runtime.Configuration, serviceManager serviceManager, midd
 
 func (m *Manager) getHTTPRouters(ctx context.Context, entryPoints []string, tls bool) map[string]map[string]*runtime.RouterInfo {
 	if m.conf != nil {
+		// 找到所有设置了当前指定入口点的路由
 		return m.conf.GetRoutersByEntryPoints(ctx, entryPoints, tls)
 	}
 
@@ -71,6 +72,8 @@ func (m *Manager) getHTTPRouters(ctx context.Context, entryPoints []string, tls 
 func (m *Manager) BuildHandlers(rootCtx context.Context, entryPoints []string, tls bool) map[string]http.Handler {
 	entryPointHandlers := make(map[string]http.Handler)
 
+	// 1、m.getHTTPRouters 找到所有设置了当前指定入口点的路由
+	// 2、TODO 一个路由没有设置特定的入口点，这里是怎么处理的？
 	for entryPointName, routers := range m.getHTTPRouters(rootCtx, entryPoints, tls) {
 		ctx := log.With(rootCtx, log.Str(log.EntryPointName, entryPointName))
 

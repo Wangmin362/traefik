@@ -61,10 +61,14 @@ func NewBuilder(configs map[string]*runtime.MiddlewareInfo, serviceBuilder servi
 func (b *Builder) BuildChain(ctx context.Context, middlewares []string) *alice.Chain {
 	chain := alice.New()
 	for _, name := range middlewares {
+		// 服务名，格式为<serviceName>@<ProviderName>，譬如web@file, ftp@docker, ats@kubernetes
 		middlewareName := provider.GetQualifiedName(ctx, name)
 
 		chain = chain.Append(func(next http.Handler) (http.Handler, error) {
+			// 上下文增加Provider名字
 			constructorContext := provider.AddInContext(ctx, middlewareName)
+
+			// 如果当前需要的插件并没有在动态配置中显示配置，直接忽略
 			if midInf, ok := b.configs[middlewareName]; !ok || midInf.Middleware == nil {
 				return nil, fmt.Errorf("middleware %q does not exist", middlewareName)
 			}
@@ -75,6 +79,7 @@ func (b *Builder) BuildChain(ctx context.Context, middlewares []string) *alice.C
 				return nil, err
 			}
 
+			// 实例化中间件作为一个http.Handler
 			constructor, err := b.buildConstructor(constructorContext, middlewareName)
 			if err != nil {
 				b.configs[middlewareName].AddError(err, true)
@@ -106,6 +111,7 @@ func checkRecursion(ctx context.Context, middlewareName string) (context.Context
 
 // it is the responsibility of the caller to make sure that b.configs[middlewareName].Middleware exists.
 func (b *Builder) buildConstructor(ctx context.Context, middlewareName string) (alice.Constructor, error) {
+	// 获取当前中间件的配置
 	config := b.configs[middlewareName]
 	if config == nil || config.Middleware == nil {
 		return nil, fmt.Errorf("invalid middleware %q configuration", middlewareName)
@@ -354,6 +360,8 @@ func (b *Builder) buildConstructor(ctx context.Context, middlewareName string) (
 			return stripprefixregex.New(ctx, next, *config.StripPrefixRegex, middlewareName)
 		}
 	}
+
+	// 以上的都是在构建Traefik内部实现的中间件，下面则是构建用户配置的远端插件以及本地插件
 
 	// Plugin
 	if config.Plugin != nil && !reflect.ValueOf(b.pluginBuilder).IsNil() { // Using "reflect" because "b.pluginBuilder" is an interface.

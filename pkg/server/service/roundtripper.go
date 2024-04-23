@@ -67,7 +67,7 @@ func (r *RoundTripperManager) Update(
 		}
 
 		var err error
-		// 根据新配置创建RoundTripper
+		// TODO 根据新配置创建RoundTripper
 		r.roundTrippers[configName], err = createRoundTripper(newConfig)
 		if err != nil {
 			log.WithoutContext().Errorf("Could not configure HTTP Transport %s, fallback on default transport: %v", configName, err)
@@ -124,12 +124,13 @@ func createRoundTripper(cfg *dynamic.ServersTransport /*用于配置Traefik和�
 		KeepAlive: 30 * time.Second,
 	}
 
+	// 转发流量的超时时间
 	if cfg.ForwardingTimeouts != nil {
 		dialer.Timeout = time.Duration(cfg.ForwardingTimeouts.DialTimeout)
 	}
 
 	transport := &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
+		Proxy:                 http.ProxyFromEnvironment, // TODO 这里可以直接配置代理  这里可以配置SOCKS代理么？
 		DialContext:           dialer.DialContext,
 		MaxIdleConnsPerHost:   cfg.MaxIdleConnsPerHost,
 		IdleConnTimeout:       90 * time.Second,
@@ -139,7 +140,7 @@ func createRoundTripper(cfg *dynamic.ServersTransport /*用于配置Traefik和�
 		WriteBufferSize:       64 * 1024,
 	}
 
-	// 流量转发超时实践
+	// 流量转发超时时间
 	if cfg.ForwardingTimeouts != nil {
 		transport.ResponseHeaderTimeout = time.Duration(cfg.ForwardingTimeouts.ResponseHeaderTimeout)
 		transport.IdleConnTimeout = time.Duration(cfg.ForwardingTimeouts.IdleConnTimeout)

@@ -62,6 +62,7 @@ func NewManager(
 }
 
 // Manager The service manager.
+// 1、后端服务的管理器
 type Manager struct {
 	routinePool         *safe.Pool
 	metricsRegistry     metrics.Registry
@@ -71,9 +72,11 @@ type Manager struct {
 	// There is one Balancer per service handler, and there is one service handler per reference to a service
 	// (e.g. if 2 routers refer to the same service name, 2 service handlers are created),
 	// which is why there is not just one Balancer per service name.
+	// 包装了负载均衡的后端服务
 	balancers map[string]healthcheck.Balancers
-	configs   map[string]*runtime.ServiceInfo
-	rand      *rand.Rand // For the initial shuffling of load-balancers.
+	// 后端服务配置
+	configs map[string]*runtime.ServiceInfo
+	rand    *rand.Rand // For the initial shuffling of load-balancers.
 }
 
 // BuildHTTP Creates a http.Handler for a service configuration.
@@ -90,6 +93,7 @@ func (m *Manager) BuildHTTP(rootCtx context.Context,
 		return nil, fmt.Errorf("the service %q does not exist", serviceName)
 	}
 
+	// TODO 这里在检查什么？
 	value := reflect.ValueOf(*conf.Service)
 	var count int
 	for i := range value.NumField() {
