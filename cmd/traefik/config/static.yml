@@ -1,5 +1,15 @@
+# 配置80入口点，接收所有的HTTP流量
+entryPoints:
+  web:
+    address: ":80"
+
 # 对于文件，默认就是开启了watch
 providers:
   file:
-    directory: "D:\Project\github\traefik\cmd\traefik\config\dynamic.yml"
-# 开放dashboard
+    filename: "cmd\\traefik\\config\\dynamic.yml"
+
+# 启用dashboard
+api:
+  insecure: true
+  dashboard: true
+  debug: true

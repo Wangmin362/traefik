@@ -1,7 +1,7 @@
 http:
   # Add the router
   routers:
-    router0:
+    web:
       entryPoints:
         - web
 #      middlewares:
@@ -20,7 +20,7 @@ http:
 
   # Add the service
   services:
-    service-foo:
+    confluence:
       loadBalancer:
         servers:
           - url: http://172.30.3.236:8090/
