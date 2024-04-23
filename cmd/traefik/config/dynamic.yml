@@ -9,6 +9,12 @@ http:
       service: confluence
       rule: Host(`cd-confluence.skyguard.com.cn`)
 
+    people:
+      entryPoints:
+        - people
+      service: people-cn
+      rule: Host(`local.people.cn`)
+
   # Add the middleware
 #  middlewares:
 #    my-basic-auth:
@@ -24,4 +30,9 @@ http:
       loadBalancer:
         servers:
           - url: http://172.30.3.236:8090/
+        passHostHeader: false
+    people-cn:
+      loadBalancer:
+        servers:
+          - url: http://www.people.com.cn/
         passHostHeader: false
