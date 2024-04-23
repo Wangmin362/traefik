@@ -28,6 +28,7 @@ func New(ctx context.Context, next http.Handler, name string) http.Handler {
 	}
 }
 
+// TODO 为啥要这么处理？
 func (p *pipelining) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	// https://github.com/golang/go/blob/3d59583836630cf13ec4bfbed977d27b1b7adbdc/src/net/http/server.go#L201-L218
 	if r.Method == http.MethodPut || r.Method == http.MethodPost {

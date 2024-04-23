@@ -420,7 +420,8 @@ func switchRouter(
 		// 2、runtime.NewConfig(conf)用于把动态配置转为运行时配置，实际上就是重新组织了一遍数据结构  TODO 思考这样坐的好处，为什么不直接使用动态配置？
 		rtConf := runtime.NewConfig(conf)
 
-		// TODO
+		// 1、routers为TCP路由
+		// 2、udpRouters为UDP路由
 		routers, udpRouters := routerFactory.CreateRouters(rtConf)
 
 		serverEntryPointsTCP.Switch(routers)

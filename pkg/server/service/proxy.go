@@ -24,7 +24,12 @@ const StatusClientClosedRequest = 499
 // StatusClientClosedRequestText non-standard HTTP status for client disconnection.
 const StatusClientClosedRequestText = "Client Closed Request"
 
-func buildProxy(passHostHeader *bool, responseForwarding *dynamic.ResponseForwarding, roundTripper http.RoundTripper, bufferPool httputil.BufferPool) (http.Handler, error) {
+func buildProxy(
+	passHostHeader *bool,
+	responseForwarding *dynamic.ResponseForwarding,
+	roundTripper http.RoundTripper,
+	bufferPool httputil.BufferPool,
+) (http.Handler, error) {
 	var flushInterval ptypes.Duration
 	if responseForwarding != nil {
 		err := flushInterval.Set(responseForwarding.FlushInterval)
@@ -36,6 +41,7 @@ func buildProxy(passHostHeader *bool, responseForwarding *dynamic.ResponseForwar
 		flushInterval = ptypes.Duration(100 * time.Millisecond)
 	}
 
+	// TODO 这里的请求是如何被反向代理成功的？
 	proxy := &httputil.ReverseProxy{
 		Director: func(outReq *http.Request) {
 			u := outReq.URL
@@ -66,6 +72,7 @@ func buildProxy(passHostHeader *bool, responseForwarding *dynamic.ResponseForwar
 			// Sec-WebSocket-Protocol and Sec-WebSocket-Version to be case-sensitive.
 			// https://tools.ietf.org/html/rfc6455#page-20
 			if isWebSocketUpgrade(outReq) {
+				// TODO 这里在干嘛？
 				outReq.Header["Sec-WebSocket-Key"] = outReq.Header["Sec-Websocket-Key"]
 				outReq.Header["Sec-WebSocket-Extensions"] = outReq.Header["Sec-Websocket-Extensions"]
 				outReq.Header["Sec-WebSocket-Accept"] = outReq.Header["Sec-Websocket-Accept"]
@@ -78,7 +85,7 @@ func buildProxy(passHostHeader *bool, responseForwarding *dynamic.ResponseForwar
 				delete(outReq.Header, "Sec-Websocket-Version")
 			}
 		},
-		Transport:     roundTripper,
+		Transport:     roundTripper, // TODO 传输数据？
 		FlushInterval: time.Duration(flushInterval),
 		BufferPool:    bufferPool,
 		ErrorHandler: func(w http.ResponseWriter, request *http.Request, err error) {

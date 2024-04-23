@@ -81,10 +81,12 @@ func NewRouterFactory(
 func (f *RouterFactory) CreateRouters(rtConf *runtime.Configuration) (map[string]*tcprouter.Router, map[string]udptypes.Handler) {
 	ctx := context.Background()
 
-	// HTTP 构建Traefik的内部API处理逻辑
+	// 1、HTTP 构建Traefik的内部API处理逻辑
+	// 2、serviceManager 用于管理Traefik中各种API，主要是Traefik内部API、Dashboard API、普罗米修斯指标 API、Ping API
+	// 3、serviceManager本质上就是一个http.Handler
 	serviceManager := f.managerFactory.Build(rtConf)
 
-	// HTTP中间件
+	// HTTP中间件Builder，用于根据指定的中间件名字，构建中间件链，其实就是一个http.Handler
 	middlewaresBuilder := middleware.NewBuilder(rtConf.Middlewares, serviceManager, f.pluginBuilder)
 
 	routerManager := router.NewManager(rtConf, serviceManager, middlewaresBuilder, f.chainBuilder, f.metricsRegistry, f.tlsManager)

@@ -81,19 +81,21 @@ type Manager struct {
 
 // BuildHTTP Creates a http.Handler for a service configuration.
 func (m *Manager) BuildHTTP(rootCtx context.Context,
-	serviceName string, // 服务名是什么？
+	serviceName string, // 这里的服务名其实就是路由中的Service字段，用于设置当前路由如果匹配成功之后把流量导入到哪里？
 ) (http.Handler, error) {
 	ctx := log.With(rootCtx, log.Str(log.ServiceName, serviceName))
 
 	serviceName = provider.GetQualifiedName(ctx, serviceName)
+	// 增加一些上下文信息
 	ctx = provider.AddInContext(ctx, serviceName)
 
+	// 根据服务名获取到当前指定服务的配置
 	conf, ok := m.configs[serviceName]
 	if !ok {
 		return nil, fmt.Errorf("the service %q does not exist", serviceName)
 	}
 
-	// TODO 这里在检查什么？
+	// 一个后端服务只能设置为LoadBalancer、Weighted、Mirroring、Failover中的一种, 不能同时设置多种
 	value := reflect.ValueOf(*conf.Service)
 	var count int
 	for i := range value.NumField() {
@@ -256,7 +258,11 @@ func (m *Manager) getWRRServiceHandler(ctx context.Context, serviceName string, 
 	return balancer, nil
 }
 
-func (m *Manager) getLoadBalancerServiceHandler(ctx context.Context, serviceName string, service *dynamic.ServersLoadBalancer) (http.Handler, error) {
+func (m *Manager) getLoadBalancerServiceHandler(ctx context.Context,
+	serviceName string, // 路由配置中设置的后端服务名
+	service *dynamic.ServersLoadBalancer, // 后端服务配置, 包含了后端服务的配置信息
+) (http.Handler, error) {
+	// 如果没有设置，那么默认开启PassHostHeader
 	if service.PassHostHeader == nil {
 		defaultPassHostHeader := true
 		service.PassHostHeader = &defaultPassHostHeader
@@ -271,6 +277,7 @@ func (m *Manager) getLoadBalancerServiceHandler(ctx context.Context, serviceName
 		return nil, err
 	}
 
+	// TODO 构建反向代理，处理请求转发
 	fwd, err := buildProxy(service.PassHostHeader, service.ResponseForwarding, roundTripper, m.bufferPool)
 	if err != nil {
 		return nil, err

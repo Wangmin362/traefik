@@ -10,8 +10,6 @@ http:
       rule: Host(`cd-confluence.skyguard.com.cn`)
 
     people:
-      entryPoints:
-        - people
       service: people-cn
       rule: Host(`local.people.cn`)
 

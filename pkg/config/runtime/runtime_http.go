@@ -15,7 +15,8 @@ import (
 // GetRoutersByEntryPoints returns all the http routers by entry points name and routers name.
 // 1、找到所有设置了当前指定入口点的路由
 // 2、返回值 第一级key为entryPoint, 第二级key为Route
-// 3、TODO 如果一个路由没有设置入口点，这里就无法匹配命中
+// 3、Q:如果一个路由没有设置入口点，这里就无法匹配命中 A：实际上，在解析动态配置时，所有没有指定入口点的路由的入口点会被设置为所有的入口点。
+// 也就是说，一个路由如果没有指定任何入口点，那么任何入口点的流量都可以使用这个路由进行匹配
 func (c *Configuration) GetRoutersByEntryPoints(ctx context.Context, entryPoints []string, tls bool) map[string]map[string]*RouterInfo {
 	entryPointsRouters := make(map[string]map[string]*RouterInfo)
 

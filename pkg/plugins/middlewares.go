@@ -18,11 +18,13 @@ func (b Builder) Build(pName string, config map[string]interface{}, middlewareNa
 		return nil, fmt.Errorf("no plugin definition in the static configuration: %s", pName)
 	}
 
+	// 获取当前中间件
 	descriptor, ok := b.middlewareBuilders[pName]
 	if !ok {
 		return nil, fmt.Errorf("unknown plugin type: %s", pName)
 	}
 
+	// 实例化中间件
 	m, err := newMiddleware(descriptor, config, middlewareName)
 	if err != nil {
 		return nil, err
@@ -59,6 +61,7 @@ func newMiddlewareBuilder(i *interp.Interpreter, basePkg, imp string) (*middlewa
 }
 
 func (p middlewareBuilder) newHandler(ctx context.Context, next http.Handler, cfg reflect.Value, middlewareName string) (http.Handler, error) {
+	// 通过反射获取参数
 	args := []reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(next), cfg, reflect.ValueOf(middlewareName)}
 	results := p.fnNew.Call(args)
 

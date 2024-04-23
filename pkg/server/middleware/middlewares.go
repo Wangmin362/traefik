@@ -43,8 +43,11 @@ const (
 
 // Builder the middleware builder.
 type Builder struct {
-	configs        map[string]*runtime.MiddlewareInfo
-	pluginBuilder  PluginsBuilder
+	// configs持有所有中间件的配置信息
+	configs map[string]*runtime.MiddlewareInfo
+	// 用于构建插件，Traefik中支持远端插件和本地插件，而Traefik的插件类型分为middleware、provider插件
+	pluginBuilder PluginsBuilder
+	// serviceManager 用于管理Traefik中各种API，主要是Traefik内部API、Dashboard API、普罗米修斯指标 API、Ping API
 	serviceBuilder serviceBuilder
 }
 
@@ -53,11 +56,16 @@ type serviceBuilder interface {
 }
 
 // NewBuilder creates a new Builder.
-func NewBuilder(configs map[string]*runtime.MiddlewareInfo, serviceBuilder serviceBuilder, pluginBuilder PluginsBuilder) *Builder {
+func NewBuilder(
+	configs map[string]*runtime.MiddlewareInfo, // 动态配置文件中所有配置的中间件
+	serviceBuilder serviceBuilder, // serviceManager 用于管理Traefik中各种API，主要是Traefik内部API、Dashboard API、普罗米修斯指标 API、Ping API
+	pluginBuilder PluginsBuilder, // 用于构建插件，Traefik中支持远端插件和本地插件，而Traefik的插件类型分为middleware、provider插件
+) *Builder {
 	return &Builder{configs: configs, serviceBuilder: serviceBuilder, pluginBuilder: pluginBuilder}
 }
 
 // BuildChain creates a middleware chain.
+// 1、BuildChain用于构建指定中间件链，而原材料其实就是根据用户配置的所有插件信息
 func (b *Builder) BuildChain(ctx context.Context, middlewares []string) *alice.Chain {
 	chain := alice.New()
 	for _, name := range middlewares {

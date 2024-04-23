@@ -13,6 +13,8 @@ import (
 
 // PluginsBuilder the plugin's builder interface.
 type PluginsBuilder interface {
+	// Build 1、pName为插件名称，config为所有的插件配置，middlewareName为当前需要构建的插件名称
+	// 2、config其实就是动态配置文件中的middleware配置
 	Build(pName string, config map[string]interface{}, middlewareName string) (plugins.Constructor, error)
 }
 
