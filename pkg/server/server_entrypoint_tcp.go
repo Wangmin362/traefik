@@ -192,7 +192,7 @@ type TCPEntryPoint struct {
 // NewTCPEntryPoint creates a new TCPEntryPoint.
 func NewTCPEntryPoint(ctx context.Context,
 	configuration *static.EntryPoint, // 可以理解为用户配置的静态文件
-	hostResolverConfig *types.HostResolverConfig, // TODO 这玩意有啥用？
+	hostResolverConfig *types.HostResolverConfig, // TODO 用于域名解析，为什么Traefik要增加这个设置
 ) (*TCPEntryPoint, error) {
 	// 实例化一个连接追踪器
 	tracker := newConnectionTracker()
@@ -211,7 +211,7 @@ func NewTCPEntryPoint(ctx context.Context,
 	// TODO 似乎是自己做域名解析
 	reqDecorator := requestdecorator.New(hostResolverConfig)
 
-	// TODO 实例化一个HTTPServer
+	// TODO 实例化一个HTTPServer用于处理HTTP流量
 	httpServer, err := createHTTPServer(ctx, listener, configuration, true, reqDecorator)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing http server: %w", err)
@@ -219,7 +219,7 @@ func NewTCPEntryPoint(ctx context.Context,
 
 	rt.SetHTTPForwarder(httpServer.Forwarder)
 
-	// TODO 实例化一个HTTPSServer
+	// TODO 实例化一个HTTPSServer用于处理HTTPS流量，本质上HTTPS流量经过TLS解析之后就是纯粹的HTTP流量
 	httpsServer, err := createHTTPServer(ctx, listener, configuration, false, reqDecorator)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing https server: %w", err)
@@ -517,7 +517,7 @@ func buildListener(ctx context.Context, entryPoint *static.EntryPoint) (net.List
 	// 强制转为TCP Keepalive连接，里面对于每个连接都设置的keepalive
 	listener = tcpKeepAliveListener{listener.(*net.TCPListener)}
 
-	// TODO 如果设置了代理协议，那么需要处理代理协议相关的东西
+	// TODO 如果设置了代理协议，那么需要处理代理协议相关的东西  可以设置为SOCKS代理么？
 	if entryPoint.ProxyProtocol != nil {
 		listener, err = buildProxyProtocolListener(ctx, entryPoint, listener)
 		if err != nil {

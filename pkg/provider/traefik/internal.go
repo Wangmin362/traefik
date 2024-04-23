@@ -21,6 +21,7 @@ const defaultInternalEntryPointName = "traefik"
 var _ provider.Provider = (*Provider)(nil)
 
 // Provider is a provider.Provider implementation that provides the internal routers.
+// TODO 如何理解这个抽象？
 type Provider struct {
 	staticCfg static.Configuration
 }

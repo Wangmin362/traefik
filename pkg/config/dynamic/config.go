@@ -20,6 +20,7 @@ type Configurations map[string]*Configuration
 // +k8s:deepcopy-gen=true
 
 // Configuration is the root of the dynamic configuration.
+// Traefik的动态配置
 type Configuration struct {
 	HTTP *HTTPConfiguration `json:"http,omitempty" toml:"http,omitempty" yaml:"http,omitempty" export:"true"`
 	TCP  *TCPConfiguration  `json:"tcp,omitempty" toml:"tcp,omitempty" yaml:"tcp,omitempty" export:"true"`

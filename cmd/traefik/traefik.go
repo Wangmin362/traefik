@@ -46,6 +46,7 @@ import (
 	"github.com/vulcand/oxy/v2/roundrobin"
 )
 
+// 启动参数命令 --configFile=cmd/traefik/config/static.yml
 func main() {
 	// traefik config inits 初始化Traefik配置
 	tConfig := cmd.NewTraefikConfiguration()
@@ -96,12 +97,12 @@ func runCmd(
 	// TODO 这玩意有啥用？
 	http.DefaultTransport.(*http.Transport).Proxy = http.ProxyFromEnvironment
 
-	// TODO 为什么在这里设置负载均衡策略？
+	// 设置默认的负载均衡策略权重
 	if err := roundrobin.SetDefaultWeight(0); err != nil {
 		log.WithoutContext().Errorf("Could not set round robin default weight: %v", err)
 	}
 
-	// TODO 猜测这里实在检查配置是否有效
+	// 静态配置初始化，设置一些默认的值
 	staticConfiguration.SetEffectiveConfiguration()
 	if err := staticConfiguration.ValidateConfiguration(); err != nil {
 		return err
@@ -109,7 +110,7 @@ func runCmd(
 
 	log.WithoutContext().Infof("Traefik version %s built on %s", version.Version, version.BuildDate)
 
-	// 反序列化静态配置
+	// 序列化静态配置
 	jsonConf, err := json.Marshal(staticConfiguration)
 	if err != nil {
 		log.WithoutContext().Errorf("Could not marshal static configuration: %v", err)
@@ -183,7 +184,7 @@ func runCmd(
 }
 
 func setupServer(staticConfiguration *static.Configuration) (*server.Server, error) {
-	// TODO 这里是在干嘛？ Provider可以理解为不同的平台，比如K8S，Docker，File等
+	// 1、把所有的Provider集中到一起，也就是providerAggregator; 2、Provider可以理解为不同的平台，比如K8S，Docker，File等
 	providerAggregator := aggregator.NewProviderAggregator(*staticConfiguration.Providers)
 
 	ctx := context.Background()
@@ -197,24 +198,25 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 
 	// ACME
 
-	// TODO TLSManager是怎么封装的？
+	// TODO TLSManager是如何管理证书的？当客户端根据不同的域名请求不同的服务时，TLSManger时如何返回给客户端对应的证书的？
 	tlsManager := traefiktls.NewManager()
-	// TODO httpChallenge是什么？
+	// httpChallenge是用于是一种通过 HTTP 协议进行的验证方法，常用于自动化的安全验证过程中，如域名所有权验证或自动化证书管理
+	// 例如使用 Let's Encrypt 进行 SSL/TLS 证书的自动化颁发和续期）。它的基本原理是证明请求方（通常是服务器或其代理）对特定域名的控制权。
 	httpChallengeProvider := acme.NewChallengeHTTP()
 
-	// TODO 这里在干嘛？
+	// TODO ALPN即应用层协议协商（Application Layer Protocol Negotiation），用于客户端和服务端之间进行TLS握手的时候客户端可以声明自己需要使用的应用层协议，譬如HTTP/2, HTTP/1.1, SPDY等等
 	tlsChallengeProvider := acme.NewChallengeTLSALPN()
 	err = providerAggregator.AddProvider(tlsChallengeProvider)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO ACME学习
+	// TODO ACME用于自动更新证书。 为什么在Traefik的设计中， ACME也是一个Provider
 	acmeProviders := initACMEProvider(staticConfiguration, &providerAggregator, tlsManager, httpChallengeProvider, tlsChallengeProvider)
 
 	// Entrypoints
 
-	// TODO TCP EntryPoint实现
+	// TODO TCP EntryPoint实现，Traefik会监听配置的端点
 	serverEntryPointsTCP, err := server.NewTCPEntryPoints(staticConfiguration.EntryPoints, staticConfiguration.HostResolver)
 	if err != nil {
 		return nil, err
@@ -305,17 +307,17 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 
 	// Watcher
 
-	// 配置动态发现
+	// TODO 配置动态发现
 	watcher := server.NewConfigurationWatcher(
 		routinesPool,
 		providerAggregator,
-		getDefaultsEntrypoints(staticConfiguration),
+		getDefaultsEntrypoints(staticConfiguration), // TODO 什么叫做默认入口点？ 有啥用？
 		"internal",
 	)
 
 	// TLS TODO 这里是在干嘛？动态加载证书？
 	watcher.AddListener(func(conf dynamic.Configuration) {
-		ctx := context.Background()
+		ctx := context.Background() // TODO 更新需要管理的证书
 		tlsManager.UpdateConfigs(ctx, conf.TLS.Stores, conf.TLS.Options, conf.TLS.Certificates)
 
 		gauge := metricsRegistry.TLSCertsNotAfterTimestampGauge()
@@ -350,7 +352,7 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 		})
 	}
 
-	// TLS challenge
+	// TLS challenge ACME证书自动更新相关的
 	watcher.AddListener(tlsChallengeProvider.ListenConfiguration)
 
 	// ACME
@@ -388,6 +390,7 @@ func getHTTPChallengeHandler(acmeProviders []*acme.Provider, httpChallengeProvid
 }
 
 func getDefaultsEntrypoints(staticConfiguration *static.Configuration) []string {
+	// TODO 什么叫做默认入口点？ 有啥用？
 	var defaultEntryPoints []string
 	for name, cfg := range staticConfiguration.EntryPoints {
 		protocol, err := cfg.GetProtocol()
@@ -407,7 +410,7 @@ func getDefaultsEntrypoints(staticConfiguration *static.Configuration) []string 
 
 func switchRouter(routerFactory *server.RouterFactory, serverEntryPointsTCP server.TCPEntryPoints, serverEntryPointsUDP server.UDPEntryPoints) func(conf dynamic.Configuration) {
 	return func(conf dynamic.Configuration) {
-		rtConf := runtime.NewConfig(conf)
+		rtConf := runtime.NewConfig(conf) // TODO 这里在干嘛？
 
 		routers, udpRouters := routerFactory.CreateRouters(rtConf)
 

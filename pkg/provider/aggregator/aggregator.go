@@ -160,7 +160,7 @@ func (p *ProviderAggregator) AddProvider(provider provider.Provider) error {
 	}
 
 	switch provider.(type) {
-	case *file.Provider:
+	case *file.Provider: // TODO Traefik Provider和文件Provider有何区别？
 		p.fileProvider = provider
 	case *traefik.Provider:
 		p.internalProvider = provider

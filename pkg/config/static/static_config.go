@@ -211,6 +211,7 @@ type Providers struct {
 // It also takes care of maintaining backwards compatibility.
 func (c *Configuration) SetEffectiveConfiguration() {
 	// Creates the default entry point if needed
+	// 如果用户没有定义任何端点，那么就默认开放80端口
 	if !c.hasUserDefinedEntrypoint() {
 		ep := &EntryPoint{Address: ":80"}
 		ep.SetDefaults()

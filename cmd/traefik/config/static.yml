@@ -1,0 +1,5 @@
+# 对于文件，默认就是开启了watch
+providers:
+  file:
+    directory: "D:\Project\github\traefik\cmd\traefik\config\dynamic.yml"
+# 开放dashboard

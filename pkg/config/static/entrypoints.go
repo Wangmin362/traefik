@@ -34,7 +34,7 @@ func (ep EntryPoint) GetAddress() string {
 // If none is specified, it defaults to "tcp".
 func (ep EntryPoint) GetProtocol() (string, error) {
 	splitN := strings.SplitN(ep.Address, "/", 2)
-	if len(splitN) < 2 {
+	if len(splitN) < 2 { // 如果长度小于2，说明用户在配置入口点的时候没有指定协议，因此默认为TCP协议
 		return "tcp", nil
 	}
 

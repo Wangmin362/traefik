@@ -22,6 +22,7 @@ type ChallengeHTTP struct {
 }
 
 // NewChallengeHTTP creates a new ChallengeHTTP.
+// TODO http challenge是什么？ 如何理解？
 func NewChallengeHTTP() *ChallengeHTTP {
 	return &ChallengeHTTP{
 		httpChallenges: make(map[string]map[string][]byte),

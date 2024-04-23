@@ -28,7 +28,7 @@ const (
 
 // DefaultTLSOptions the default TLS options.
 var DefaultTLSOptions = Options{
-	// ensure http2 enabled
+	// ensure http2 enabled  // TODO ALPN是什么？
 	ALPNProtocols: []string{"h2", "http/1.1", tlsalpn01.ACMETLS1Protocol},
 	MinVersion:    "VersionTLS12",
 	CipherSuites:  getCipherSuites(),
@@ -44,6 +44,7 @@ func getCipherSuites() []string {
 }
 
 // Manager is the TLS option/store/configuration factory.
+// TODO TLS Manager是如何管理证书的？
 type Manager struct {
 	lock         sync.RWMutex
 	storesConfig map[string]Store
