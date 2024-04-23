@@ -24,21 +24,33 @@ type RouterFactory struct {
 	entryPointsTCP []string
 	entryPointsUDP []string
 
-	managerFactory  *service.ManagerFactory
+	// 用于管理Traefik中各种API，主要是Traefik内部API、Dashboard API、普罗米修斯指标 API、Ping API
+	managerFactory *service.ManagerFactory
+	// 指标注册中心，一般就是普罗米修斯
 	metricsRegistry metrics.Registry
 
+	// 用户配置的远端插件和本地插件
 	pluginBuilder middleware.PluginsBuilder
 
+	// 每个请求的处理链，已经配置了公共的日志、链路追踪、指标中间件
 	chainBuilder *middleware.ChainBuilder
 	tlsManager   *tls.Manager
 }
 
 // NewRouterFactory creates a new RouterFactory.
-func NewRouterFactory(staticConfiguration static.Configuration, managerFactory *service.ManagerFactory, tlsManager *tls.Manager,
-	chainBuilder *middleware.ChainBuilder, pluginBuilder middleware.PluginsBuilder, metricsRegistry metrics.Registry,
+// 把入口点按照不同的协议进行归类，不是TCP入口点，就是TCP入口点
+func NewRouterFactory(
+	staticConfiguration static.Configuration, // 静态配置
+	managerFactory *service.ManagerFactory, // 用于管理Traefik中各种API，主要是Traefik内部API、Dashboard API、普罗米修斯指标 API、Ping API
+	tlsManager *tls.Manager, // TLS
+	chainBuilder *middleware.ChainBuilder, // 每个请求的处理链，已经配置了公共的日志、链路追踪、指标中间件
+	pluginBuilder middleware.PluginsBuilder, // 用户配置的远端插件和本地插件
+	metricsRegistry metrics.Registry, // 指标注册中心，一般就是普罗米修斯
 ) *RouterFactory {
 	var entryPointsTCP, entryPointsUDP []string
+	// 遍历所有的入口点
 	for name, cfg := range staticConfiguration.EntryPoints {
+		// 获取入口点配置的协议
 		protocol, err := cfg.GetProtocol()
 		if err != nil {
 			// Should never happen because Traefik should not start if protocol is invalid.
@@ -47,7 +59,7 @@ func NewRouterFactory(staticConfiguration static.Configuration, managerFactory *
 
 		if protocol == "udp" {
 			entryPointsUDP = append(entryPointsUDP, name)
-		} else {
+		} else { // 入口点不配置协议，默认及时TCP协议
 			entryPointsTCP = append(entryPointsTCP, name)
 		}
 	}

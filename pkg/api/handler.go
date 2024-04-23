@@ -47,13 +47,14 @@ type RunTimeRepresentation struct {
 
 // Handler serves the configuration and status of Traefik on API endpoints.
 type Handler struct {
-	staticConfig static.Configuration
+	staticConfig static.Configuration // 静态配置
 
 	// runtimeConfiguration is the data set used to create all the data representations exposed by the API.
 	runtimeConfiguration *runtime.Configuration
 }
 
 // NewBuilder returns a http.Handler builder based on runtime.Configuration.
+// 用于启用Traefik内部的API
 func NewBuilder(staticConfig static.Configuration) func(*runtime.Configuration) http.Handler {
 	return func(configuration *runtime.Configuration) http.Handler {
 		return New(staticConfig, configuration).createRouter()

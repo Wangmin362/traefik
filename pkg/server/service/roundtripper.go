@@ -41,27 +41,33 @@ func NewRoundTripperManager() *RoundTripperManager {
 type RoundTripperManager struct {
 	rtLock        sync.RWMutex
 	roundTrippers map[string]http.RoundTripper
-	configs       map[string]*dynamic.ServersTransport
+	configs       map[string]*dynamic.ServersTransport // 用于配置Traefik和后端服务之前的设置
 }
 
 // Update updates the roundtrippers configurations.
-func (r *RoundTripperManager) Update(newConfigs map[string]*dynamic.ServersTransport) {
+func (r *RoundTripperManager) Update(
+	newConfigs map[string]*dynamic.ServersTransport, // 用于配置Traefik和后端服务之前的设置
+) {
 	r.rtLock.Lock()
 	defer r.rtLock.Unlock()
 
+	// 遍历老的配置
 	for configName, config := range r.configs {
+		// 看看新配置中是否存在
 		newConfig, ok := newConfigs[configName]
-		if !ok {
+		if !ok { // 如果新配置中没有这个配置了，直接删除
 			delete(r.configs, configName)
 			delete(r.roundTrippers, configName)
 			continue
 		}
 
+		// 如果新配置和就配置一样，直接忽略，啥也不需要干
 		if reflect.DeepEqual(newConfig, config) {
 			continue
 		}
 
 		var err error
+		// 根据新配置创建RoundTripper
 		r.roundTrippers[configName], err = createRoundTripper(newConfig)
 		if err != nil {
 			log.WithoutContext().Errorf("Could not configure HTTP Transport %s, fallback on default transport: %v", configName, err)
@@ -69,12 +75,15 @@ func (r *RoundTripperManager) Update(newConfigs map[string]*dynamic.ServersTrans
 		}
 	}
 
+	// 遍历新的配置
 	for newConfigName, newConfig := range newConfigs {
+		// 如果新的配置已经存在，直接忽略，应为上面肯定已经更新了
 		if _, ok := r.configs[newConfigName]; ok {
 			continue
 		}
 
 		var err error
+		// 直接根据新配置创建RoundTripper
 		r.roundTrippers[newConfigName], err = createRoundTripper(newConfig)
 		if err != nil {
 			log.WithoutContext().Errorf("Could not configure HTTP Transport %s, fallback on default transport: %v", newConfigName, err)
@@ -105,7 +114,7 @@ func (r *RoundTripperManager) Get(name string) (http.RoundTripper, error) {
 // For the settings that can't be configured in Traefik it uses the default http.Transport settings.
 // An exception to this is the MaxIdleConns setting as we only provide the option MaxIdleConnsPerHost in Traefik at this point in time.
 // Setting this value to the default of 100 could lead to confusing behavior and backwards compatibility issues.
-func createRoundTripper(cfg *dynamic.ServersTransport) (http.RoundTripper, error) {
+func createRoundTripper(cfg *dynamic.ServersTransport /*用于配置Traefik和后端服务之间的设置*/) (http.RoundTripper, error) {
 	if cfg == nil {
 		return nil, errors.New("no transport configuration given")
 	}
@@ -130,6 +139,7 @@ func createRoundTripper(cfg *dynamic.ServersTransport) (http.RoundTripper, error
 		WriteBufferSize:       64 * 1024,
 	}
 
+	// 流量转发超时实践
 	if cfg.ForwardingTimeouts != nil {
 		transport.ResponseHeaderTimeout = time.Duration(cfg.ForwardingTimeouts.ResponseHeaderTimeout)
 		transport.IdleConnTimeout = time.Duration(cfg.ForwardingTimeouts.IdleConnTimeout)
@@ -160,6 +170,7 @@ func createRoundTripper(cfg *dynamic.ServersTransport) (http.RoundTripper, error
 		}, nil
 	}
 
+	// TODO 这玩意是怎么实现的？
 	rt, err := newSmartRoundTripper(transport, cfg.ForwardingTimeouts)
 	if err != nil {
 		return nil, err

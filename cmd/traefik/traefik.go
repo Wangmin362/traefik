@@ -275,23 +275,33 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 
 	// Service manager factory
 
-	// TODO
+	// RoundTripper用于抽象对于HTTP请求的处理，Traefik实现了smartRoundTripper用于处理HTTP, HTTP/2流量
+	// TODO Traefik是怎么实现的这个RoundTripper的？
 	roundTripperManager := service.NewRoundTripperManager()
-	// TODO
+	// 从ACMEProvider中获取ACME Handler
 	acmeHTTPHandler := getHTTPChallengeHandler(acmeProviders, httpChallengeProvider)
-	// TODO
+	// 用于管理Traefik中各种API，主要是Traefik内部API、Dashboard API、普罗米修斯指标 API、Ping API
 	managerFactory := service.NewManagerFactory(*staticConfiguration, routinesPool, metricsRegistry, roundTripperManager, acmeHTTPHandler)
 
 	// Router factory
 
 	accessLog := setupAccessLog(staticConfiguration.AccessLog)
-	// TODO 和OTLP 链路追踪有关？
+	// TODO 配置链路追踪相关
 	tracer := setupTracing(staticConfiguration.Tracing)
 
-	// TODO 中间件？
+	// 1、构建指定入口点的请求链，增加通用的日志、链路追踪、指标中间件
+	// 2、这里为入口点添加的中间件都是公共的，所以是通用的方法
 	chainBuilder := middleware.NewChainBuilder(metricsRegistry, accessLog, tracer)
-	// TODO 路由？
-	routerFactory := server.NewRouterFactory(*staticConfiguration, managerFactory, tlsManager, chainBuilder, pluginBuilder, metricsRegistry)
+	// 1、把入口点按照不同的协议进行归类，不是TCP入口点，就是TCP入口点
+	// 2、这里仅仅涉及到入口点的分类，并没有涉及到路由的组装
+	routerFactory := server.NewRouterFactory(
+		*staticConfiguration, // 静态配置
+		managerFactory,       // 用于管理Traefik中各种API，主要是Traefik内部API、Dashboard API、普罗米修斯指标 API、Ping API
+		tlsManager,           // TLS
+		chainBuilder,         // 每个请求的处理链，已经配置了公共的日志、链路追踪、指标中间件
+		pluginBuilder,        // 用户配置的远端插件和本地插件
+		metricsRegistry,      // 指标注册中心，一般就是普罗米修斯
+	)
 
 	// Watcher
 
@@ -407,7 +417,13 @@ func switchRouter(routerFactory *server.RouterFactory, serverEntryPointsTCP serv
 }
 
 // initACMEProvider creates an acme provider from the ACME part of globalConfiguration.
-func initACMEProvider(c *static.Configuration, providerAggregator *aggregator.ProviderAggregator, tlsManager *traefiktls.Manager, httpChallengeProvider, tlsChallengeProvider challenge.Provider) []*acme.Provider {
+func initACMEProvider(
+	c *static.Configuration,
+	providerAggregator *aggregator.ProviderAggregator,
+	tlsManager *traefiktls.Manager,
+	httpChallengeProvider,
+	tlsChallengeProvider challenge.Provider,
+) []*acme.Provider {
 	localStores := map[string]*acme.LocalStore{}
 
 	var resolvers []*acme.Provider

@@ -41,6 +41,7 @@ const capturedData key = "capturedData"
 
 // Wrap returns a new handler that inserts a Capture into the given handler for each incoming request.
 // It satisfies the alice.Constructor type.
+// TODO 这里增加了什么功能？
 func Wrap(next http.Handler) (http.Handler, error) {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		c := &Capture{}

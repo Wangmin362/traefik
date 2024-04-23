@@ -48,6 +48,7 @@ func newSmartRoundTripper(transport *http.Transport, forwardingTimeouts *dynamic
 
 // smartRoundTripper implements RoundTrip while making sure that HTTP/2 is not used
 // with protocols that start with a Connection Upgrade, such as SPDY or Websocket.
+// TODO 这玩意是怎么实现的？
 type smartRoundTripper struct {
 	http2 *http.Transport
 	http  *http.Transport

@@ -44,7 +44,12 @@ type RoundTripperGetter interface {
 }
 
 // NewManager creates a new Manager.
-func NewManager(configs map[string]*runtime.ServiceInfo, metricsRegistry metrics.Registry, routinePool *safe.Pool, roundTripperManager RoundTripperGetter) *Manager {
+func NewManager(
+	configs map[string]*runtime.ServiceInfo,
+	metricsRegistry metrics.Registry,
+	routinePool *safe.Pool,
+	roundTripperManager RoundTripperGetter,
+) *Manager {
 	return &Manager{
 		routinePool:         routinePool,
 		metricsRegistry:     metricsRegistry,
@@ -72,7 +77,9 @@ type Manager struct {
 }
 
 // BuildHTTP Creates a http.Handler for a service configuration.
-func (m *Manager) BuildHTTP(rootCtx context.Context, serviceName string) (http.Handler, error) {
+func (m *Manager) BuildHTTP(rootCtx context.Context,
+	serviceName string, // 服务名是什么？
+) (http.Handler, error) {
 	ctx := log.With(rootCtx, log.Str(log.ServiceName, serviceName))
 
 	serviceName = provider.GetQualifiedName(ctx, serviceName)
