@@ -16,18 +16,18 @@ import (
 
 const hostMatcher = "Host"
 
-// TODO 路由中支持的规则
+// 路由中支持的规则
 var httpFuncs = map[string]func(*mux.Route, ...string) error{
-	hostMatcher:     host,
-	"HostHeader":    host,
-	"HostRegexp":    hostRegexp,
-	"ClientIP":      clientIP,
-	"Path":          path,
-	"PathPrefix":    pathPrefix,
-	"Method":        methods,
-	"Headers":       headers,
-	"HeadersRegexp": headersRegexp,
-	"Query":         query,
+	hostMatcher:     host,          // 支持Host域名匹配
+	"HostHeader":    host,          // 支持请求头匹配
+	"HostRegexp":    hostRegexp,    // 支持Host正则
+	"ClientIP":      clientIP,      // 客户端IP
+	"Path":          path,          // 全路径匹配
+	"PathPrefix":    pathPrefix,    // 路径前缀匹配
+	"Method":        methods,       // 方法匹配
+	"Headers":       headers,       // 请求头匹配
+	"HeadersRegexp": headersRegexp, // 请求头正则
+	"Query":         query,         // URL参数匹配
 }
 
 // Muxer handles routing with rules.

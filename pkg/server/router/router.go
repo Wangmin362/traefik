@@ -121,7 +121,7 @@ func (m *Manager) BuildHandlers(rootCtx context.Context, entryPoints []string, t
 			handler = BuildDefaultHTTPRouter()
 		}
 
-		// 公共插件
+		// 公共插件，增加日志、指标、链路追踪等功能
 		handlerWithMiddlewares, err := m.chainBuilder.Build(ctx, entryPointName).Then(handler)
 		if err != nil {
 			log.FromContext(ctx).Error(err)
