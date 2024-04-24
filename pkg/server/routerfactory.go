@@ -83,7 +83,7 @@ func (f *RouterFactory) CreateRouters(rtConf *runtime.Configuration) (map[string
 
 	// 1、HTTP 构建Traefik的内部API处理逻辑
 	// 2、serviceManager 用于管理Traefik中各种API，主要是Traefik内部API、Dashboard API、普罗米修斯指标 API、Ping API
-	// 3、serviceManager本质上就是一个http.Handler
+	// 3、serviceManager本质上就是一个http.Handler，最核心的功能就是转发流量给后端服务
 	serviceManager := f.managerFactory.Build(rtConf)
 
 	// HTTP中间件Builder，用于根据指定的中间件名字，构建中间件链，其实就是一个http.Handler

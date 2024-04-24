@@ -82,6 +82,7 @@ func (m *Manager) getHTTPRouters(ctx context.Context, entryPoints []string, tls 
 // 1、为指定的入口点构建路由处理器。其实原理很简单，就是根据指定的入口点，找到所有设置了当前指定入口点的路由，然后构建路由处理器。每个路由都有可能
 // 配置了中间件，我们只需要把所有的路由遍历一遍，看看当前路由有没有配置指定的中间件，如果有，就构建中间件链，然后把路由处理器和中间件链组合在一起。
 // 2、Q：如果一个路由没有设置特定的入口点，这里是怎么处理的？ A：一个路由如果没有设置特定的入口点，那么所有入口点的流量都可以经过这个路由
+// 3、返回值的key为入口点的名字
 // 3、TODO Q:为什么这里多了一个tls参数？
 func (m *Manager) BuildHandlers(rootCtx context.Context, entryPoints []string, tls bool) map[string]http.Handler {
 	entryPointHandlers := make(map[string]http.Handler)
@@ -91,7 +92,8 @@ func (m *Manager) BuildHandlers(rootCtx context.Context, entryPoints []string, t
 	for entryPointName, routers := range m.getHTTPRouters(rootCtx, entryPoints, tls) {
 		ctx := log.With(rootCtx, log.Str(log.EntryPointName, entryPointName))
 
-		// 把当前入口点配置的所有路由构建为一个http.Handle链，包括中间件
+		// 1、把当前入口点配置的所有路由构建为一个http.Handle链，包括中间件
+		// TODO 路由选择应该就是在这里面配置的
 		handler, err := m.buildEntryPointHandler(ctx, routers)
 		if err != nil {
 			log.FromContext(ctx).Error(err)
