@@ -13,10 +13,13 @@ import (
 
 // HTTPConfiguration contains all the HTTP configuration parameters.
 type HTTPConfiguration struct {
-	Routers           map[string]*Router           `json:"routers,omitempty" toml:"routers,omitempty" yaml:"routers,omitempty" export:"true"`
-	Services          map[string]*Service          `json:"services,omitempty" toml:"services,omitempty" yaml:"services,omitempty" export:"true"`
-	Middlewares       map[string]*Middleware       `json:"middlewares,omitempty" toml:"middlewares,omitempty" yaml:"middlewares,omitempty" export:"true"`
-	Models            map[string]*Model            `json:"models,omitempty" toml:"models,omitempty" yaml:"models,omitempty" export:"true"`
+	Routers     map[string]*Router     `json:"routers,omitempty" toml:"routers,omitempty" yaml:"routers,omitempty" export:"true"`
+	Services    map[string]*Service    `json:"services,omitempty" toml:"services,omitempty" yaml:"services,omitempty" export:"true"`
+	Middlewares map[string]*Middleware `json:"middlewares,omitempty" toml:"middlewares,omitempty" yaml:"middlewares,omitempty" export:"true"`
+	Models      map[string]*Model      `json:"models,omitempty" toml:"models,omitempty" yaml:"models,omitempty" export:"true"`
+	// 1、用于定制Traefik作为一个http客户端时向真实服务器发送请求的行为。
+	// 2、起核心目的就是为了定制化http.Transport，http.Transport 抽象了一个http客户端，用于向服务端发起一个http请求。这里暴露的配置
+	// 就是为了方便用户定制Traefik的行为
 	ServersTransports map[string]*ServersTransport `json:"serversTransports,omitempty" toml:"serversTransports,omitempty" yaml:"serversTransports,omitempty" label:"-" export:"true"`
 }
 
@@ -252,7 +255,11 @@ type HealthCheck struct{}
 // +k8s:deepcopy-gen=true
 
 // ServersTransport options to configure communication between Traefik and the servers.
-// 1、ServersTransport顾名思义，其实就是用于设置Traefik和后端服务之前交互的配置
+// 1、之所以称为ServersTransport，其实这里是根据Traefik作为七层代理角色命名的。Traefik并不生产请求，仅仅是http请求的搬运工。Traefik收到
+// 请求之后就是玩了命的找到真正的服务端，然后和这个服务端建立TCP连接，发出HTTP请求。在这个过程中，Traefik扮演的是http客户端的工作。在golang
+// 中，http客户端的核心抽象就是http.RoundTripper，用于完成一次http往返请求，在HTTP规范当中，这次http往返请求被称之为事务。而http.RoundTripper
+// 的默认实现就是http.Transport，这里的ServersTransport其实就是想把一些必要的配置开放给用户，让用户可以定制Traefik作为一个代理向真实
+// 服务端发送Http请求的行为。
 type ServersTransport struct {
 	// 服务名，用于抽象一个后端服务
 	ServerName string `description:"ServerName used to contact the server." json:"serverName,omitempty" toml:"serverName,omitempty" yaml:"serverName,omitempty"`
@@ -267,8 +274,9 @@ type ServersTransport struct {
 	// 流量转发超时实践
 	ForwardingTimeouts *ForwardingTimeouts `description:"Timeouts for requests forwarded to the backend servers." json:"forwardingTimeouts,omitempty" toml:"forwardingTimeouts,omitempty" yaml:"forwardingTimeouts,omitempty" export:"true"`
 	// 是否禁用HTTP2
-	DisableHTTP2 bool   `description:"Disable HTTP/2 for connections with backend servers." json:"disableHTTP2,omitempty" toml:"disableHTTP2,omitempty" yaml:"disableHTTP2,omitempty" export:"true"`
-	PeerCertURI  string `description:"URI used to match against SAN URI during the peer certificate verification." json:"peerCertURI,omitempty" toml:"peerCertURI,omitempty" yaml:"peerCertURI,omitempty" export:"true"`
+	DisableHTTP2 bool `description:"Disable HTTP/2 for connections with backend servers." json:"disableHTTP2,omitempty" toml:"disableHTTP2,omitempty" yaml:"disableHTTP2,omitempty" export:"true"`
+	// TODO 这玩意干嘛的？
+	PeerCertURI string `description:"URI used to match against SAN URI during the peer certificate verification." json:"peerCertURI,omitempty" toml:"peerCertURI,omitempty" yaml:"peerCertURI,omitempty" export:"true"`
 }
 
 // +k8s:deepcopy-gen=true

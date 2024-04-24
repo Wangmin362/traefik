@@ -11,7 +11,10 @@ import (
 	"golang.org/x/net/http2"
 )
 
-func newSmartRoundTripper(transport *http.Transport, forwardingTimeouts *dynamic.ForwardingTimeouts) (*smartRoundTripper, error) {
+func newSmartRoundTripper(
+	transport *http.Transport, // 用于完成http请求，并接受服务端的响应
+	forwardingTimeouts *dynamic.ForwardingTimeouts, // Traefik的流量转发的超时时间
+) (*smartRoundTripper, error) {
 	transportHTTP1 := transport.Clone()
 
 	transportHTTP2, err := http2.ConfigureTransports(transport)
@@ -38,6 +41,7 @@ func newSmartRoundTripper(transport *http.Transport, forwardingTimeouts *dynamic
 		transportH2C.PingTimeout = time.Duration(forwardingTimeouts.PingTimeout)
 	}
 
+	// TODO h2c居然是一个协议？
 	transport.RegisterProtocol("h2c", transportH2C)
 
 	return &smartRoundTripper{
@@ -60,6 +64,8 @@ func (m *smartRoundTripper) Clone() http.RoundTripper {
 	return &smartRoundTripper{http: h, http2: h2}
 }
 
+// RoundTrip 1、用于完成HTTP请求，并从服务端接收响应。
+// 2、自动判断应该使用HTTP还是HTTP2客户端
 func (m *smartRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	// If we have a connection upgrade, we don't use HTTP/2
 	if httpguts.HeaderValuesContainsToken(req.Header["Connection"], "Upgrade") {

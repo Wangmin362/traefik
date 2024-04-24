@@ -39,13 +39,18 @@ const (
 const defaultMaxBodySize int64 = -1
 
 // RoundTripperGetter is a roundtripper getter interface.
+// 1、Q：为什么这里的响应是http.RoundTripper而不是http.Handler接口？ A：因为Traefik的主要作用是作为一个代理。并不是真实请求的服务端。
+// 所以当Traefik接收到一个http请求之后，需要想办法把这个请求发送到真正的服务端；而在这个过程中，对于真实的服务端而言，Traefik是彻头彻尾的
+// web客户端。所以这里使用的是http.RoundTripper而不是http.Handler接口。
 type RoundTripperGetter interface {
+	// Get 1、用于获取后端服务的http客户端。
+	// 2、name为Traefik动态配置的后端服务名。http.RoundTripper可以理解为http客户端
 	Get(name string) (http.RoundTripper, error)
 }
 
 // NewManager creates a new Manager.
 func NewManager(
-	configs map[string]*runtime.ServiceInfo,
+	configs map[string]*runtime.ServiceInfo, // 所有后端服务的配置信息
 	metricsRegistry metrics.Registry,
 	routinePool *safe.Pool,
 	roundTripperManager RoundTripperGetter,
@@ -64,27 +69,29 @@ func NewManager(
 // Manager The service manager.
 // 1、后端服务的管理器
 type Manager struct {
-	routinePool         *safe.Pool
-	metricsRegistry     metrics.Registry
+	routinePool         *safe.Pool       // 协程池
+	metricsRegistry     metrics.Registry // 普罗米修斯指标注册中心
 	bufferPool          httputil.BufferPool
-	roundTripperManager RoundTripperGetter
+	roundTripperManager RoundTripperGetter // 用于http客户但发送HTTP请求，并获取响应保温。可以简单理解为http客户端
 	// balancers is the map of all Balancers, keyed by service name.
 	// There is one Balancer per service handler, and there is one service handler per reference to a service
 	// (e.g. if 2 routers refer to the same service name, 2 service handlers are created),
 	// which is why there is not just one Balancer per service name.
-	// 包装了负载均衡的后端服务
+	// 包装了负载均衡的后端服务, key为后端服务名字
 	balancers map[string]healthcheck.Balancers
-	// 后端服务配置
+	// 后端服务配置， key为后端服务名字
 	configs map[string]*runtime.ServiceInfo
-	rand    *rand.Rand // For the initial shuffling of load-balancers.
+	// 后端服务负载均衡随机数，不然每次都是从第一个服务轮询
+	rand *rand.Rand // For the initial shuffling of load-balancers.
 }
 
 // BuildHTTP Creates a http.Handler for a service configuration.
 func (m *Manager) BuildHTTP(rootCtx context.Context,
-	serviceName string, // 这里的服务名其实就是路由中的Service字段，用于设置当前路由如果匹配成功之后把流量导入到哪里？
+	serviceName string, // 这里的服务名其实就是路由中的Service字段，用于设置当前路由如果匹配成功之后把流量导入到哪里
 ) (http.Handler, error) {
 	ctx := log.With(rootCtx, log.Str(log.ServiceName, serviceName))
 
+	// 获取后端服务名，格式为<serviceName>@<ProviderName>
 	serviceName = provider.GetQualifiedName(ctx, serviceName)
 	// 增加一些上下文信息
 	ctx = provider.AddInContext(ctx, serviceName)
@@ -272,12 +279,14 @@ func (m *Manager) getLoadBalancerServiceHandler(ctx context.Context,
 		service.ServersTransport = provider.GetQualifiedName(ctx, service.ServersTransport)
 	}
 
+	// 根据服务名字，获取为该服务构建的RoundTripper
 	roundTripper, err := m.roundTripperManager.Get(service.ServersTransport)
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO 构建反向代理，处理请求转发
+	// TODO 这里是怎么把流量转发出去，然后把流量io拷贝到之前的连接中的？
 	fwd, err := buildProxy(service.PassHostHeader, service.ResponseForwarding, roundTripper, m.bufferPool)
 	if err != nil {
 		return nil, err

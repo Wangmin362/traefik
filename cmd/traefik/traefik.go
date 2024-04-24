@@ -283,7 +283,9 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 	roundTripperManager := service.NewRoundTripperManager()
 	// 从ACMEProvider中获取ACME Handler
 	acmeHTTPHandler := getHTTPChallengeHandler(acmeProviders, httpChallengeProvider)
-	// 用于管理Traefik中各种API，主要是Traefik内部API、Dashboard API、普罗米修斯指标 API、Ping API
+	// 1、用于管理Traefik中各种API，主要是Traefik内部API、Dashboard API、普罗米修斯指标 API、Ping API
+	// 2、最最核心的其实ManagerFactory会管理客户端到服务端之间的请求，也就是说Traefik转发流量就是在ManagerFactory中完成的
+	// TODO 继续分析
 	managerFactory := service.NewManagerFactory(*staticConfiguration, routinesPool, metricsRegistry, roundTripperManager, acmeHTTPHandler)
 
 	// Router factory
@@ -299,7 +301,7 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 	// 2、这里仅仅涉及到入口点的分类，并没有涉及到路由的组装
 	routerFactory := server.NewRouterFactory(
 		*staticConfiguration, // 静态配置
-		managerFactory,       // 用于管理Traefik中各种API，主要是Traefik内部API、Dashboard API、普罗米修斯指标 API、Ping API
+		managerFactory,       // 用于管理Traefik中各种API，主要是Traefik内部API、Dashboard API、普罗米修斯指标 API、Ping API。其中也包括对于真实流量的转发
 		tlsManager,           // TLS
 		chainBuilder,         // 每个请求的处理链，已经配置了公共的日志、链路追踪、指标中间件
 		pluginBuilder,        // 用户配置的远端插件和本地插件
@@ -321,6 +323,7 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 		ctx := context.Background() // TODO 更新需要管理的证书
 		tlsManager.UpdateConfigs(ctx, conf.TLS.Stores, conf.TLS.Options, conf.TLS.Certificates)
 
+		// 增加指标相关的东西
 		gauge := metricsRegistry.TLSCertsNotAfterTimestampGauge()
 		for _, certificate := range tlsManager.GetServerCertificates() {
 			appendCertMetric(gauge, certificate)

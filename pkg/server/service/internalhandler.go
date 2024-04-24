@@ -39,6 +39,7 @@ func NewInternalHandlers(next serviceManager, apiHandler, rest, metricsHandler, 
 
 // BuildHTTP builds an HTTP handler.
 func (m *InternalHandlers) BuildHTTP(rootCtx context.Context, serviceName string) (http.Handler, error) {
+	// 如果请求的前缀不包含@internal，说明是业务请求，直接转发给后端服务
 	if !strings.HasSuffix(serviceName, "@internal") {
 		return m.serviceManager.BuildHTTP(rootCtx, serviceName)
 	}

@@ -35,7 +35,7 @@ func NewManagerFactory(
 	staticConfiguration static.Configuration, // 静态配置
 	routinesPool *safe.Pool, // 协程池
 	metricsRegistry metrics.Registry, // 指标测量
-	roundTripperManager *RoundTripperManager, // 用于管理Traefik和后端服务之间的连接处理
+	roundTripperManager *RoundTripperManager, // 用于管理Traefik和后端服务之间的连接处理，RoundTripper用于完成Traefik到后端真实服务的HTTP请求
 	acmeHTTPHandler http.Handler, // 处理ACME流量
 ) *ManagerFactory {
 	factory := &ManagerFactory{
@@ -87,6 +87,7 @@ func NewManagerFactory(
 // Build creates a service manager.
 // 构建Traefik的内部API处理逻辑
 func (f *ManagerFactory) Build(configuration *runtime.Configuration) *InternalHandlers {
+	// 这里的核心就是ServiceManager，用于支持Traefik把流量转发给后端服务
 	svcManager := NewManager(
 		configuration.Services, // HTTP后端服务
 		f.metricsRegistry, f.routinesPool, f.roundTripperManager)
