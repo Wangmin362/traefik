@@ -67,11 +67,13 @@ func NewBuilder(
 // BuildChain creates a middleware chain.
 // 1、BuildChain用于构建指定中间件链，而原材料其实就是根据用户配置的所有插件信息
 func (b *Builder) BuildChain(ctx context.Context, middlewares []string) *alice.Chain {
+	// 实例化一个空的请求链
 	chain := alice.New()
 	for _, name := range middlewares {
 		// 服务名，格式为<serviceName>@<ProviderName>，譬如web@file, ftp@docker, ats@kubernetes
 		middlewareName := provider.GetQualifiedName(ctx, name)
 
+		// 根据中间件实例化一个http.Handler，然后添加进来
 		chain = chain.Append(func(next http.Handler) (http.Handler, error) {
 			// 上下文增加Provider名字
 			constructorContext := provider.AddInContext(ctx, middlewareName)

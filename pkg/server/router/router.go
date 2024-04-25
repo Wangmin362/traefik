@@ -134,8 +134,9 @@ func (m *Manager) BuildHandlers(rootCtx context.Context, entryPoints []string, t
 }
 
 func (m *Manager) buildEntryPointHandler(ctx context.Context,
-	configs map[string]*runtime.RouterInfo, // 某个入口点配置的所有路由
+	configs map[string]*runtime.RouterInfo, // 某个入口点配置的所有路由，找到这些路由非常简单，只需要遍历所有的路由，只要引用了入口点，这个路由就是我们需要找的路由
 ) (http.Handler, error) {
+	// TODO
 	muxer, err := httpmuxer.NewMuxer()
 	if err != nil {
 		return nil, err
@@ -162,6 +163,9 @@ func (m *Manager) buildEntryPointHandler(ctx context.Context,
 			continue
 		}
 
+		// 1、Q：多个路由是如何组装数据的？ 实际上多个路由之间无需组装起来，因为客户端流量最终只会被一个路由所处理，从而进入到真正的后端服务。
+		// 我们只需要在流量进来的时候一个一个匹配路由，只要当前的路由规则可以匹配流量，就直接把流量导入到后端的服务。
+		// 2、这里的muxer其实就是一个路由切分器，核心实现就是判断路由规则是否能够匹配当前流量
 		err = muxer.AddRoute(routerConfig.Rule, routerConfig.Priority, handler)
 		if err != nil {
 			routerConfig.AddError(err, true)
@@ -170,6 +174,7 @@ func (m *Manager) buildEntryPointHandler(ctx context.Context,
 		}
 	}
 
+	// 根据路由的优先级进行排序
 	muxer.SortRoutes()
 
 	chain := alice.New()
@@ -203,6 +208,7 @@ func (m *Manager) buildRouterHandler(ctx context.Context,
 		}
 	}
 
+	// 1、根据路由的配置构造一个http.Handler处理链，路由处理链的核心其实就是中间件，Traefik设计通过中间件来丰富处理链
 	handler, err := m.buildHTTPHandler(ctx, routerConfig, routerName)
 	if err != nil {
 		return nil, err
@@ -237,7 +243,8 @@ func (m *Manager) buildHTTPHandler(ctx context.Context,
 		return nil, errors.New("the service is missing on the router")
 	}
 
-	// 真正的流量处理，这里需要把流量导入到一个合适的Service
+	// 1、真正的流量处理，这里需要把流量导入到后端服务，如果后端服务有多个节点，那么就需要根据合适的负载均衡算法导入到其中的一个节点
+	// 2、Traefik在这里真正导入流量是其实利用的是golang设计的反向代理
 	sHandler, err := m.serviceManager.BuildHTTP(ctx, router.Service)
 	if err != nil {
 		return nil, err
@@ -259,7 +266,7 @@ func (m *Manager) buildHTTPHandler(ctx context.Context,
 		chain = chain.Append(metricsMiddle.WrapRouterHandler(ctx, m.metricsRegistry, routerName, provider.GetQualifiedName(ctx, router.Service)))
 	}
 
-	// TODO
+	// TODO 用于处理无限循环的请求。什么时候会出现这种情况？
 	if router.DefaultRule {
 		chain = chain.Append(denyrouterrecursion.WrapHandler(routerName))
 	}

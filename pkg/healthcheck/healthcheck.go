@@ -172,12 +172,15 @@ func (hc *HealthCheck) checkServersLB(ctx context.Context, backend *BackendConfi
 	enabledURLs := backend.LB.Servers()
 
 	var newDisabledURLs []backendURL
+	// 遍历禁用列表，一个服务可能是集群部署，即多台机器提供相同的服务。这里实在检查之前宕机的机器是否已经恢复
 	for _, disabledURL := range backend.disabledURLs {
 		serverUpMetricValue := float64(0)
 
 		if err := checkHealth(disabledURL.url, backend); err == nil {
 			logger.Warnf("Health check up: returning to server list. Backend: %q URL: %q Weight: %d",
 				backend.name, disabledURL.url.String(), disabledURL.weight)
+			// 1、当前服务已经可用，直接把当前机器恢复到可用列表
+			// 2、TODO 这里不需要考虑多次检测可用才认为是可用的么
 			if err = backend.LB.UpsertServer(disabledURL.url, roundrobin.Weight(disabledURL.weight)); err != nil {
 				logger.Error(err)
 			}

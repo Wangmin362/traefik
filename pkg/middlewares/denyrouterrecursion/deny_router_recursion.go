@@ -40,6 +40,7 @@ func New(routerName string, next http.Handler) (*DenyRouterRecursion, error) {
 }
 
 // ServeHTTP implements http.Handler.
+// TODO 什么情况下会出现无限循环？
 func (l *DenyRouterRecursion) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if req.Header.Get(xTraefikRouter) == l.routerNameHash {
 		log.WithoutContext().Debugf("Rejecting request in provenance of the same router (%q) to stop potential infinite loop.", l.routerName)

@@ -23,7 +23,7 @@ type Manager struct {
 // NewManager creates a new manager.
 func NewManager(conf *runtime.Configuration) *Manager {
 	return &Manager{
-		configs: conf.TCPServices,
+		configs: conf.TCPServices, // TCP后端服务
 		rand:    rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 }
@@ -39,6 +39,7 @@ func (m *Manager) BuildTCP(rootCtx context.Context, serviceName string) (tcp.Han
 		return nil, fmt.Errorf("the service %q does not exist", serviceQualifiedName)
 	}
 
+	// 负载均衡只能选择二选一
 	if conf.LoadBalancer != nil && conf.Weighted != nil {
 		err := errors.New("cannot create service: multi-types service not supported, consider declaring two different pieces of service instead")
 		conf.AddError(err, true)

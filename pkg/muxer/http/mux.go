@@ -55,12 +55,15 @@ func NewMuxer() (*Muxer, error) {
 }
 
 // AddRoute add a new route to the router.
+// 为Muxer增加路由规则
 func (r *Muxer) AddRoute(rule string, priority int, handler http.Handler) error {
+	// 检查规则是否合法
 	parse, err := r.parser.Parse(rule)
 	if err != nil {
 		return fmt.Errorf("error while parsing rule %s: %w", rule, err)
 	}
 
+	// 解析路由规则
 	buildTree, ok := parse.(rules.TreeBuilder)
 	if !ok {
 		return fmt.Errorf("error while parsing rule %s", rule)
@@ -72,6 +75,7 @@ func (r *Muxer) AddRoute(rule string, priority int, handler http.Handler) error 
 
 	route := r.NewRoute().Handler(handler).Priority(priority)
 
+	// 逻辑与或非的支持
 	err = addRuleOnRoute(route, buildTree())
 	if err != nil {
 		route.BuildOnly()

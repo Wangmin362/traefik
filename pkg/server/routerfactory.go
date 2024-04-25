@@ -89,14 +89,19 @@ func (f *RouterFactory) CreateRouters(rtConf *runtime.Configuration) (map[string
 	// HTTP中间件Builder，用于根据指定的中间件名字，构建中间件链，其实就是一个http.Handler
 	middlewaresBuilder := middleware.NewBuilder(rtConf.Middlewares, serviceManager, f.pluginBuilder)
 
+	// 实例化路由管理器
 	routerManager := router.NewManager(rtConf, serviceManager, middlewaresBuilder, f.chainBuilder, f.metricsRegistry, f.tlsManager)
 
+	// 从所有路由配置当中，选出给特定入口点的路由，然后根据这些路由的信息为每个路由构造一个http.Handler，构造的核心其实就是中间件。与其说是
+	// 路由Handler，倒不如说是中间件Handler，因为路由的所有功能都是借助中间件的能力。所以构建路由Handler的核心就是把中间件的能力封装为一个
+	// 个的http.Handler，然后把这些http.Handler组装为一个http.Handler链
 	handlersNonTLS := routerManager.BuildHandlers(ctx, f.entryPointsTCP, false)
 	handlersTLS := routerManager.BuildHandlers(ctx, f.entryPointsTCP, true)
 
+	// 后端服务的健康检测，配置了健康检测的服务就会起一个协程不断检测
 	serviceManager.LaunchHealthCheck()
 
-	// TCP
+	// 1、这玩意和ServiceManager应该是相同的作用，只不过ServiceManager处理的是HTTP流量，而TCPManager处理的是纯TCP流量
 	svcTCPManager := tcp.NewManager(rtConf)
 
 	middlewaresTCPBuilder := tcpmiddleware.NewBuilder(rtConf.TCPMiddlewares)

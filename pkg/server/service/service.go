@@ -331,6 +331,7 @@ func (m *Manager) LaunchHealthCheck() {
 		if hcOpts == nil {
 			continue
 		}
+		// 获取Transport
 		hcOpts.Transport, _ = m.roundTripperManager.Get(service.ServersTransport)
 		log.FromContext(ctx).Debugf("Setting up healthcheck for service %s with %s", serviceName, *hcOpts)
 
