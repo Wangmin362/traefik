@@ -16,10 +16,12 @@ type HTTPConfiguration struct {
 	Routers     map[string]*Router     `json:"routers,omitempty" toml:"routers,omitempty" yaml:"routers,omitempty" export:"true"`
 	Services    map[string]*Service    `json:"services,omitempty" toml:"services,omitempty" yaml:"services,omitempty" export:"true"`
 	Middlewares map[string]*Middleware `json:"middlewares,omitempty" toml:"middlewares,omitempty" yaml:"middlewares,omitempty" export:"true"`
-	Models      map[string]*Model      `json:"models,omitempty" toml:"models,omitempty" yaml:"models,omitempty" export:"true"`
+	// TODO 这玩意有啥用？
+	Models map[string]*Model `json:"models,omitempty" toml:"models,omitempty" yaml:"models,omitempty" export:"true"`
 	// 1、用于定制Traefik作为一个http客户端时向真实服务器发送请求的行为。
 	// 2、起核心目的就是为了定制化http.Transport，http.Transport 抽象了一个http客户端，用于向服务端发起一个http请求。这里暴露的配置
 	// 就是为了方便用户定制Traefik的行为
+	// 3、TODO 这里为什么需要把服务的Transport单独拎出来？  完全可以放在Service当中
 	ServersTransports map[string]*ServersTransport `json:"serversTransports,omitempty" toml:"serversTransports,omitempty" yaml:"serversTransports,omitempty" label:"-" export:"true"`
 }
 
@@ -271,7 +273,7 @@ type ServersTransport struct {
 	Certificates traefiktls.Certificates `description:"Certificates for mTLS." json:"certificates,omitempty" toml:"certificates,omitempty" yaml:"certificates,omitempty" export:"true"`
 	// TODO 每个域名可以保留的最大空闲连接数？
 	MaxIdleConnsPerHost int `description:"If non-zero, controls the maximum idle (keep-alive) to keep per-host. If zero, DefaultMaxIdleConnsPerHost is used" json:"maxIdleConnsPerHost,omitempty" toml:"maxIdleConnsPerHost,omitempty" yaml:"maxIdleConnsPerHost,omitempty" export:"true"`
-	// 流量转发超时实践
+	// 流量转发超时时间
 	ForwardingTimeouts *ForwardingTimeouts `description:"Timeouts for requests forwarded to the backend servers." json:"forwardingTimeouts,omitempty" toml:"forwardingTimeouts,omitempty" yaml:"forwardingTimeouts,omitempty" export:"true"`
 	// 是否禁用HTTP2
 	DisableHTTP2 bool `description:"Disable HTTP/2 for connections with backend servers." json:"disableHTTP2,omitempty" toml:"disableHTTP2,omitempty" yaml:"disableHTTP2,omitempty" export:"true"`
