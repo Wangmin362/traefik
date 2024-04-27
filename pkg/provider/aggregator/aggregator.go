@@ -62,7 +62,8 @@ func maybeThrottledProvide(prd provider.Provider, defaultDuration time.Duration)
 type ProviderAggregator struct {
 	internalProvider provider.Provider
 	fileProvider     provider.Provider
-	// 内部聚集了所有有效的Provider
+	// 1、内部聚集了所有有效的Provider，这些Provider都已经初始化完成
+	// 2、除了InternalProvider以及FileProvider，其余的Provider都在这里
 	providers                 []provider.Provider
 	providersThrottleDuration time.Duration
 }
@@ -74,6 +75,7 @@ func NewProviderAggregator(conf static.Providers) ProviderAggregator {
 	}
 
 	if conf.File != nil {
+		// 之所以是安静的添加，是因为添加Provider可能会发生错误，这是的错误应该被忽略
 		p.quietAddProvider(conf.File)
 	}
 
@@ -148,13 +150,16 @@ func NewProviderAggregator(conf static.Providers) ProviderAggregator {
 
 func (p *ProviderAggregator) quietAddProvider(provider provider.Provider) {
 	err := p.AddProvider(provider)
-	if err != nil { // 这里直接忽略了错误，因为这个错误并不影响Traefik的运行，也不能因为这个错误让Traefik进程直接退出
+	if err != nil {
+		// 这里直接忽略了错误，因为这个错误并不影响Traefik的运行，也不能因为这个错误让Traefik进程直接退出，因为Traefik支持动态配置
+		// 如果上一次配置成功执行，下一次配置执行失败，那么这个失败的配置就不应该得到执行
 		log.WithoutContext().Errorf("Error while initializing provider %T: %v", provider, err)
 	}
 }
 
 // AddProvider adds a provider in the providers map.
 func (p *ProviderAggregator) AddProvider(provider provider.Provider) error {
+	// 初始化Provider
 	err := provider.Init()
 	if err != nil {
 		return err
@@ -163,7 +168,7 @@ func (p *ProviderAggregator) AddProvider(provider provider.Provider) error {
 	switch provider.(type) {
 	case *file.Provider: // TODO Traefik Provider和文件Provider有何区别？
 		p.fileProvider = provider
-	case *traefik.Provider:
+	case *traefik.Provider: // TODO 这个Provider应该就是Traefik本身的API
 		p.internalProvider = provider
 	default:
 		p.providers = append(p.providers, provider)

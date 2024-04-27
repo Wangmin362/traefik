@@ -124,7 +124,7 @@ func runCmd(
 		checkNewVersion()
 	}
 
-	// TODO 似乎是在给Traefik发送一些统计数据
+	// 给Traefik发送一些统计数据，默认是禁用的
 	stats(staticConfiguration)
 
 	// TODO 初始化TraefikServer
@@ -186,12 +186,13 @@ func runCmd(
 func setupServer(staticConfiguration *static.Configuration) (*server.Server, error) {
 	// 1、把所有的Provider集中到一起，也就是providerAggregator;
 	// 2、Provider可以理解为不同的平台，比如K8S，Docker，File等
+	// 3、Provider是Traefik中非常重要的一个概念，其核心作用其实就是为了给Traefik提供动态篇配置。也就说“服务发现”概念
 	providerAggregator := aggregator.NewProviderAggregator(*staticConfiguration.Providers)
 
 	ctx := context.Background()
 	routinesPool := safe.NewPool(ctx) // 实例化协程池
 
-	// adds internal provider  这里增加了Traefik内部的一些东西
+	// adds internal provider  这个Provider用于暴露Traefik API
 	err := providerAggregator.AddProvider(traefik.New(*staticConfiguration))
 	if err != nil {
 		return nil, err
@@ -205,7 +206,8 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 	// 例如使用 Let's Encrypt 进行 SSL/TLS 证书的自动化颁发和续期）。它的基本原理是证明请求方（通常是服务器或其代理）对特定域名的控制权。
 	httpChallengeProvider := acme.NewChallengeHTTP()
 
-	// TODO ALPN即应用层协议协商（Application Layer Protocol Negotiation），用于客户端和服务端之间进行TLS握手的时候客户端可以声明自己需要使用的应用层协议，譬如HTTP/2, HTTP/1.1, SPDY等等
+	// TODO ALPN即应用层协议协商（Application Layer Protocol Negotiation），用于客户端和服务端之间进行TLS握手的时候客户端可以声明
+	// 自己需要使用的应用层协议，譬如HTTP/2, HTTP/1.1, SPDY等等
 	tlsChallengeProvider := acme.NewChallengeTLSALPN()
 	err = providerAggregator.AddProvider(tlsChallengeProvider)
 	if err != nil {

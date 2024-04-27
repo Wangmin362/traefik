@@ -59,6 +59,7 @@ type TCPRouter struct {
 // +k8s:deepcopy-gen=true
 
 // RouterTCPTLSConfig holds the TLS configuration for a router.
+// 如何理解这里的TCP TLS配置？
 type RouterTCPTLSConfig struct {
 	Passthrough  bool           `json:"passthrough" toml:"passthrough" yaml:"passthrough" export:"true"`
 	Options      string         `json:"options,omitempty" toml:"options,omitempty" yaml:"options,omitempty" export:"true"`
