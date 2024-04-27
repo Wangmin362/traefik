@@ -320,9 +320,10 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 		"internal",
 	)
 
-	// TLS TODO 这里是在干嘛？动态加载证书？
+	// TLS 动态更新证书，不同的路由可能需要配置不同的证书，因此Traefik需要支持证书的动态更新
 	watcher.AddListener(func(conf dynamic.Configuration) {
-		ctx := context.Background() // TODO 更新需要管理的证书
+		ctx := context.Background()
+		// 更新各个路由需要使用的证书
 		tlsManager.UpdateConfigs(ctx, conf.TLS.Stores, conf.TLS.Options, conf.TLS.Certificates)
 
 		// 增加指标相关的东西

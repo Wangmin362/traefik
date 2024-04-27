@@ -285,18 +285,19 @@ func (m *Manager) getLoadBalancerServiceHandler(ctx context.Context,
 		return nil, err
 	}
 
-	// TODO 构建反向代理，处理请求转发
-	// TODO 这里是怎么把流量转发出去，然后把流量io拷贝到之前的连接中的？
+	// 构建反向代理，处理请求转发。这里实际上就可以理解为一个io copy的过程http反向代理会向目标服务发起HTTP请求，然后把响应拷贝到之前的响应中
 	fwd, err := buildProxy(service.PassHostHeader, service.ResponseForwarding, roundTripper, m.bufferPool)
 	if err != nil {
 		return nil, err
 	}
 
+	// 增加日志
 	alHandler := func(next http.Handler) (http.Handler, error) {
 		return accesslog.NewFieldHandler(next, accesslog.ServiceName, serviceName, accesslog.AddServiceFields), nil
 	}
 	chain := alice.New()
 	if m.metricsRegistry != nil && m.metricsRegistry.IsSvcEnabled() {
+		// 增加指标
 		chain = chain.Append(metricsMiddle.WrapServiceHandler(ctx, m.metricsRegistry, serviceName))
 	}
 

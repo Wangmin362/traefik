@@ -92,7 +92,8 @@ func (m *Manager) BuildHandlers(rootCtx context.Context, entryPoints []string, t
 	for entryPointName, routers := range m.getHTTPRouters(rootCtx, entryPoints, tls) {
 		ctx := log.With(rootCtx, log.Str(log.EntryPointName, entryPointName))
 
-		// 1、把当前入口点配置的所有路由构建为一个http.Handle链，包括中间件
+		// 1、把当前入口点配置的所有路由构建为一个http.Handle链，包括中间件，路由的核心其实就是中间件，应为路由的能力其实就是中间件提供的，
+		// 中间件提供了如何处理流量。
 		// TODO 路由选择应该就是在这里面配置的
 		handler, err := m.buildEntryPointHandler(ctx, routers)
 		if err != nil {
@@ -136,7 +137,8 @@ func (m *Manager) BuildHandlers(rootCtx context.Context, entryPoints []string, t
 func (m *Manager) buildEntryPointHandler(ctx context.Context,
 	configs map[string]*runtime.RouterInfo, // 某个入口点配置的所有路由，找到这些路由非常简单，只需要遍历所有的路由，只要引用了入口点，这个路由就是我们需要找的路由
 ) (http.Handler, error) {
-	// TODO
+	// 其实muxer就是一个http.Handler，其核心逻辑其实就是当请求进来的时候，muxer根据持有的路由一个个匹配。一旦有路由规则匹配到流量特征，
+	// 就把这个流量导入到该路由指向的后端服务
 	muxer, err := httpmuxer.NewMuxer()
 	if err != nil {
 		return nil, err
@@ -202,7 +204,7 @@ func (m *Manager) buildRouterHandler(ctx context.Context,
 		if len(routerConfig.TLS.Options) > 0 && routerConfig.TLS.Options != tls.DefaultTLSConfigName {
 			tlsOptionsName = provider.GetQualifiedName(ctx, routerConfig.TLS.Options)
 		}
-		// TODO 这里应该是在获取证书
+		// TODO 这里应该是在获取证书，这里怎么把动态证书给到TLSManager
 		if _, err := m.tlsManager.Get(tls.DefaultTLSStoreName, tlsOptionsName); err != nil {
 			return nil, fmt.Errorf("building router handler: %w", err)
 		}
@@ -214,6 +216,7 @@ func (m *Manager) buildRouterHandler(ctx context.Context,
 		return nil, err
 	}
 
+	// 添加AccessLog日志中间件
 	handlerWithAccessLog, err := alice.New(func(next http.Handler) (http.Handler, error) {
 		return accesslog.NewFieldHandler(next, accesslog.RouterName, routerName, nil), nil
 	}).Then(handler)
@@ -245,6 +248,7 @@ func (m *Manager) buildHTTPHandler(ctx context.Context,
 
 	// 1、真正的流量处理，这里需要把流量导入到后端服务，如果后端服务有多个节点，那么就需要根据合适的负载均衡算法导入到其中的一个节点
 	// 2、Traefik在这里真正导入流量是其实利用的是golang设计的反向代理
+	// TODO 重点分析这里的流量处理
 	sHandler, err := m.serviceManager.BuildHTTP(ctx, router.Service)
 	if err != nil {
 		return nil, err

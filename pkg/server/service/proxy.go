@@ -85,7 +85,7 @@ func buildProxy(
 				delete(outReq.Header, "Sec-Websocket-Version")
 			}
 		},
-		Transport:     roundTripper, // TODO 传输数据？
+		Transport:     roundTripper, // 用于完成HTTP事务，即构造HTTP报文，然后就收响应
 		FlushInterval: time.Duration(flushInterval),
 		BufferPool:    bufferPool,
 		ErrorHandler: func(w http.ResponseWriter, request *http.Request, err error) {

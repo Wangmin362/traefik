@@ -25,7 +25,8 @@ type Configuration struct {
 	HTTP *HTTPConfiguration `json:"http,omitempty" toml:"http,omitempty" yaml:"http,omitempty" export:"true"`
 	TCP  *TCPConfiguration  `json:"tcp,omitempty" toml:"tcp,omitempty" yaml:"tcp,omitempty" export:"true"`
 	UDP  *UDPConfiguration  `json:"udp,omitempty" toml:"udp,omitempty" yaml:"udp,omitempty" export:"true"`
-	// TODO 为什么TLS在这里设置？
+	// 和路由、后端服务一样，Traefik也需要动态管理证书。因为用户很有可能会给每个可能的路由都配置一个合适的证书，因此Traefik需要动态发现不同
+	// 的证书
 	TLS *TLSConfiguration `json:"tls,omitempty" toml:"tls,omitempty" yaml:"tls,omitempty" export:"true"`
 }
 
@@ -35,5 +36,6 @@ type Configuration struct {
 type TLSConfiguration struct {
 	Certificates []*tls.CertAndStores   `json:"certificates,omitempty"  toml:"certificates,omitempty" yaml:"certificates,omitempty" label:"-" export:"true"`
 	Options      map[string]tls.Options `json:"options,omitempty" toml:"options,omitempty" yaml:"options,omitempty" label:"-" export:"true"`
-	Stores       map[string]tls.Store   `json:"stores,omitempty" toml:"stores,omitempty" yaml:"stores,omitempty" export:"true"`
+	// 用于存储证书
+	Stores map[string]tls.Store `json:"stores,omitempty" toml:"stores,omitempty" yaml:"stores,omitempty" export:"true"`
 }
