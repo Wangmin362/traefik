@@ -94,7 +94,10 @@ func runCmd(
 	// TODO 日志
 	configureLogging(staticConfiguration)
 
-	// TODO 这玩意有啥用？
+	// 1、可以直接通过环境变量设置SOCKS代理，当然，这里设置的是HTTP的SOCKS代理
+	// 2、设置的时候需要同时设置HTTP_PROXY以及HTTPS_PROXY环境变量，这样就可以同时支持HTTP、HTTPS的SOCKS代理，譬如下面的举例
+	// 配置环境变量 HTTP_PROXY=socks5://192.168.11.3.224:10801 支持HTTP SOCKS5代理
+	// 配置环境变量 HTTPS_PROXY=socks5://192.168.11.224:10801  支持HTTPS SOCKS5代理
 	http.DefaultTransport.(*http.Transport).Proxy = http.ProxyFromEnvironment
 
 	// 设置默认的负载均衡策略权重

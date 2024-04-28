@@ -140,7 +140,7 @@ func createRoundTripper(cfg *dynamic.ServersTransport /*用于配置Traefik作�
 	// 1、定义一个Transport，用于完成发送http请求，并且接收响应。
 	// 2、简单来说，可以直接把http.Transport理解为http客户端。http.Client的核心就是http.Transport
 	transport := &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment, // 这里可以支持配置HTTP代理或者HTTPS代理，并不支持直接配置SOCKS代理
+		Proxy:                 http.ProxyFromEnvironment, // 这里可以支持配置HTTP代理或者HTTPS代理，也支持SOCKS代理
 		DialContext:           dialer.DialContext,
 		MaxIdleConnsPerHost:   cfg.MaxIdleConnsPerHost,
 		IdleConnTimeout:       90 * time.Second,
