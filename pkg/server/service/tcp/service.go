@@ -16,6 +16,7 @@ import (
 
 // Manager is the TCPHandlers factory.
 type Manager struct {
+	// 用户所有配置的后端服务
 	configs map[string]*runtime.TCPServiceInfo
 	rand    *rand.Rand // For the initial shuffling of load-balancers.
 }
@@ -29,11 +30,14 @@ func NewManager(conf *runtime.Configuration) *Manager {
 }
 
 // BuildTCP Creates a tcp.Handler for a service configuration.
+// 为不同的后端服务构建TCP连接处理器，用于处理TCP连接
 func (m *Manager) BuildTCP(rootCtx context.Context, serviceName string) (tcp.Handler, error) {
+	// 获取服务名，格式为<serviceName>@<Provider>，这样做的好处是，不同的Provider可以提供相同的服务名
 	serviceQualifiedName := provider.GetQualifiedName(rootCtx, serviceName)
 	ctx := provider.AddInContext(rootCtx, serviceQualifiedName)
 	ctx = log.With(ctx, log.Str(log.ServiceName, serviceName))
 
+	// 获取配置的服务
 	conf, ok := m.configs[serviceQualifiedName]
 	if !ok {
 		return nil, fmt.Errorf("the service %q does not exist", serviceQualifiedName)

@@ -283,8 +283,8 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 
 	// Service manager factory
 
-	// RoundTripper用于抽象对于HTTP请求的处理，Traefik实现了smartRoundTripper用于处理HTTP, HTTP/2流量
-	// TODO Traefik是怎么实现的这个RoundTripper的？
+	// 1、RoundTripper用于抽象对于HTTP请求的处理，Traefik实现了smartRoundTripper用于处理HTTP, HTTP/2流量
+	// 2、所谓的RoundTripper，其实就是Traefik根据客户配置的Transport的不同，生成不同的http.Transport
 	roundTripperManager := service.NewRoundTripperManager()
 	// 从ACMEProvider中获取ACME Handler
 	acmeHTTPHandler := getHTTPChallengeHandler(acmeProviders, httpChallengeProvider)

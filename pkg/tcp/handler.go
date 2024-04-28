@@ -7,7 +7,8 @@ import (
 // Handler is the TCP Handlers interface.
 type Handler interface {
 	// ServeTCP
-	// TODO golang http定义的Handler的原型为ServeHTTP(ResponseWriter, *Request), 这里估计有一点类似的意味
+	// 1、TODO golang http定义的Handler的原型为ServeHTTP(ResponseWriter, *Request), 这里估计有一点类似的意味
+	// 2、用于处理一个TCP连接
 	ServeTCP(conn WriteCloser)
 }
 

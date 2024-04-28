@@ -10,6 +10,7 @@ import (
 
 // TCPConfiguration contains all the TCP configuration parameters.
 type TCPConfiguration struct {
+	// TCP路由
 	Routers     map[string]*TCPRouter     `json:"routers,omitempty" toml:"routers,omitempty" yaml:"routers,omitempty" export:"true"`
 	Services    map[string]*TCPService    `json:"services,omitempty" toml:"services,omitempty" yaml:"services,omitempty" export:"true"`
 	Middlewares map[string]*TCPMiddleware `json:"middlewares,omitempty" toml:"middlewares,omitempty" yaml:"middlewares,omitempty" export:"true"`
@@ -18,6 +19,7 @@ type TCPConfiguration struct {
 // +k8s:deepcopy-gen=true
 
 // TCPService holds a tcp service configuration (can only be of one type at the same time).
+// TCP的服务只能选择为负载均衡以及根据权重来负载均衡
 type TCPService struct {
 	LoadBalancer *TCPServersLoadBalancer `json:"loadBalancer,omitempty" toml:"loadBalancer,omitempty" yaml:"loadBalancer,omitempty" export:"true"`
 	Weighted     *TCPWeightedRoundRobin  `json:"weighted,omitempty" toml:"weighted,omitempty" yaml:"weighted,omitempty" label:"-" export:"true"`
@@ -48,12 +50,18 @@ func (w *TCPWRRService) SetDefaults() {
 
 // TCPRouter holds the router configuration.
 type TCPRouter struct {
-	EntryPoints []string            `json:"entryPoints,omitempty" toml:"entryPoints,omitempty" yaml:"entryPoints,omitempty" export:"true"`
-	Middlewares []string            `json:"middlewares,omitempty" toml:"middlewares,omitempty" yaml:"middlewares,omitempty" export:"true"`
-	Service     string              `json:"service,omitempty" toml:"service,omitempty" yaml:"service,omitempty" export:"true"`
-	Rule        string              `json:"rule,omitempty" toml:"rule,omitempty" yaml:"rule,omitempty"`
-	Priority    int                 `json:"priority,omitempty" toml:"priority,omitempty,omitzero" yaml:"priority,omitempty" export:"true"`
-	TLS         *RouterTCPTLSConfig `json:"tls,omitempty" toml:"tls,omitempty" yaml:"tls,omitempty" label:"allowEmpty" file:"allowEmpty" kv:"allowEmpty" export:"true"`
+	// 入口点配置
+	EntryPoints []string `json:"entryPoints,omitempty" toml:"entryPoints,omitempty" yaml:"entryPoints,omitempty" export:"true"`
+	// 中间件配置
+	Middlewares []string `json:"middlewares,omitempty" toml:"middlewares,omitempty" yaml:"middlewares,omitempty" export:"true"`
+	// 后端服务配置
+	Service string `json:"service,omitempty" toml:"service,omitempty" yaml:"service,omitempty" export:"true"`
+	// 规则配置
+	Rule string `json:"rule,omitempty" toml:"rule,omitempty" yaml:"rule,omitempty"`
+	// 路由优先级配置
+	Priority int `json:"priority,omitempty" toml:"priority,omitempty,omitzero" yaml:"priority,omitempty" export:"true"`
+	// TLS配置
+	TLS *RouterTCPTLSConfig `json:"tls,omitempty" toml:"tls,omitempty" yaml:"tls,omitempty" label:"allowEmpty" file:"allowEmpty" kv:"allowEmpty" export:"true"`
 }
 
 // +k8s:deepcopy-gen=true
