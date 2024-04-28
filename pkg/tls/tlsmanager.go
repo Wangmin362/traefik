@@ -47,11 +47,13 @@ func getCipherSuites() []string {
 // TODO TLS Manager是如何管理证书的？
 type Manager struct {
 	lock sync.RWMutex
-	// TODO 证书存储配置
+	// TODO 证书存储配置  这里的key似乎是不同的存储空间
 	storesConfig map[string]Store
 	stores       map[string]*CertificateStore
-	configs      map[string]Options
-	certs        []*CertAndStores
+	// TLS配置
+	configs map[string]Options
+	// 证书，公钥和私钥
+	certs []*CertAndStores
 }
 
 // NewManager creates a new Manager.
