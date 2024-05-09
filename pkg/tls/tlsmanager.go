@@ -68,6 +68,7 @@ func NewManager() *Manager {
 
 // UpdateConfigs updates the TLS* configuration options.
 // It initializes the default TLS store, and the TLS store for the ACME challenges.
+// 动态更新证书
 func (m *Manager) UpdateConfigs(ctx context.Context, stores map[string]Store, configs map[string]Options, certs []*CertAndStores) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
