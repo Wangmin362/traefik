@@ -190,12 +190,14 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 	// 1、把所有的Provider集中到一起，也就是providerAggregator;
 	// 2、Provider可以理解为不同的平台，比如K8S，Docker，File等
 	// 3、Provider是Traefik中非常重要的一个概念，其核心作用其实就是为了给Traefik提供动态篇配置。也就说“服务发现”概念
+	// 4、Traefik支持同时启用多个Aggregator，譬如File, K8s, K8SIngress等同时启动，此时动态配置就是由这三个Provider共同拼接而成的
 	providerAggregator := aggregator.NewProviderAggregator(*staticConfiguration.Providers)
 
 	ctx := context.Background()
-	routinesPool := safe.NewPool(ctx) // 实例化协程池
+	routinesPool := safe.NewPool(ctx) // 实例化协程池，协程池的意义在于协程的回收，高效利用协程
 
 	// adds internal provider  这个Provider用于暴露Traefik API
+	// Traefik服务本身也有一些Restful接口，这些接口可能也需要暴露出去，所以也需要一个Provider提供路由参数，路由的目的地其实就是Traefik自己
 	err := providerAggregator.AddProvider(traefik.New(*staticConfiguration))
 	if err != nil {
 		return nil, err
@@ -223,6 +225,7 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 	// Entrypoints
 
 	// TODO TCP EntryPoint实现，Traefik会监听配置的端点
+	// 对于每一个EntryPoint，Traefik都会启动一个Listener与之对应
 	serverEntryPointsTCP, err := server.NewTCPEntryPoints(staticConfiguration.EntryPoints, staticConfiguration.HostResolver)
 	if err != nil {
 		return nil, err
@@ -350,6 +353,7 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 
 	// Switch router
 	// TODO 重点分析
+	// 1、监听路由的变化，当路由变化时，需要重新构造ChainBuilder
 	watcher.AddListener(switchRouter(routerFactory, serverEntryPointsTCP, serverEntryPointsUDP))
 
 	// Metrics

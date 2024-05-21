@@ -9,6 +9,7 @@ type Handler interface {
 	// ServeTCP
 	// 1、TODO golang http定义的Handler的原型为ServeHTTP(ResponseWriter, *Request), 这里估计有一点类似的意味
 	// 2、用于处理一个TCP连接
+	// 3、HTTP连接的处理本质上就是TCP连接的处理
 	ServeTCP(conn WriteCloser)
 }
 

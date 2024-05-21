@@ -18,7 +18,7 @@ func (s *HandlerSwitcher) ServeTCP(conn WriteCloser) {
 	if ok {
 		h.ServeTCP(conn)
 	} else {
-		// TODO 一般应该不会达到这里
+		// TODO 一般应该不会达到这里、如果没有找到路由，直接关闭连接
 		conn.Close()
 	}
 }

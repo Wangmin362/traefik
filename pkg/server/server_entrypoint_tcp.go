@@ -125,7 +125,7 @@ func NewTCPEntryPoints(entryPointsConfig static.EntryPoints, hostResolverConfig 
 
 		ctx := log.With(context.Background(), log.Str(log.EntryPointName, entryPointName))
 
-		// 实例化TCP入口点
+		// 实例化TCP入口点，对于每个TcpEntryPoint，Traefik都会启动一个Server
 		serverEntryPointsTCP[entryPointName], err = NewTCPEntryPoint(ctx, config, hostResolverConfig)
 		if err != nil {
 			return nil, fmt.Errorf("error while building entryPoint %s: %w", entryPointName, err)
@@ -208,7 +208,7 @@ func NewTCPEntryPoint(ctx context.Context,
 	// TODO 为什么这里的初始化这么简单？
 	rt := &tcprouter.Router{}
 
-	// TODO 似乎是自己做域名解析
+	// TODO 似乎是自己做域名解析  本质上就是一个http.Handler
 	reqDecorator := requestdecorator.New(hostResolverConfig)
 
 	// TODO 实例化一个HTTPServer用于处理HTTP流量
@@ -460,7 +460,7 @@ func (ln tcpKeepAliveListener) Accept() (net.Conn, error) {
 		return nil, err
 	}
 
-	// TODO 这里设置为3分钟是什么意思？
+	// 设置TCP连接保持3分钟
 	if err := tc.SetKeepAlivePeriod(3 * time.Minute); err != nil {
 		// Some systems, such as OpenBSD, have no user-settable per-socket TCP
 		// keepalive options.
@@ -509,6 +509,7 @@ func buildProxyProtocolListener(ctx context.Context, entryPoint *static.EntryPoi
 }
 
 func buildListener(ctx context.Context, entryPoint *static.EntryPoint) (net.Listener, error) {
+	// 监听在当前入口点配置的地址上
 	listener, err := net.Listen("tcp", entryPoint.GetAddress())
 	if err != nil {
 		return nil, fmt.Errorf("error opening listener: %w", err)
@@ -607,7 +608,7 @@ func createHTTPServer(
 	ctx context.Context,
 	ln net.Listener, // 入口点监听器
 	configuration *static.EntryPoint, // 入口点的静态配置
-	withH2c bool, // 这个参数似乎就是用于区分当前创建的是HTTPServer还是HTTPSServer。 withH2c=true则是创建HTTPServer，否则则创建HTTPServer
+	withH2c bool, // h2c其实指的是HTTP/2.0 Clear Text，也就是HTTP2.0协议直接传输数据，而不是通过TLS加密传输数据的
 	reqDecorator *requestdecorator.RequestDecorator, // 用于给请求上下文增加CNAME相关东西
 ) (*httpServer, error) {
 	if configuration.HTTP2.MaxConcurrentStreams < 0 {
@@ -715,6 +716,9 @@ func createHTTPServer(
 	go func() {
 		// 启动HTTPServer，一旦用户的连接从入口点进来，经过路由判定之后需要进入HTTP服务，连接就会被转发到这里
 		// TODO 代理的功能怎么体现，这里怎么时感觉直接在处理流量，难道不应该是直接把流量转发给后端服务么？
+		// 1、这里的Server其实并不是真正的Listener，监听EntryPoint配置的端口，这里获取到的连接其实是外部传进来的连接。这里仅仅时在
+		// 处理连接中的HTTP报文。
+		// 2、这里虽然启动了HTTP Server，但其实监听端口并不是在这里，因此这里启动HTTP Server完全没有问题。
 		err := serverHTTP.Serve(listener)
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.FromContext(ctx).Errorf("Error while starting server: %v", err)

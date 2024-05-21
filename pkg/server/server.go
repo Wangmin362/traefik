@@ -15,6 +15,7 @@ import (
 )
 
 // Server is the reverse-proxy/load-balancer engine.
+// 这玩意本质上就是Traefik
 type Server struct {
 	watcher        *ConfigurationWatcher    // 配置监听器，这里应该就是动态加载配置的地方
 	tcpEntryPoints TCPEntryPoints           // TCP入口点
@@ -59,11 +60,11 @@ func (s *Server) Start(ctx context.Context) {
 		s.Stop()
 	}()
 
-	s.tcpEntryPoints.Start() // 启动TCP入口点
+	s.tcpEntryPoints.Start() // 启动TCP入口点，启动每个入口点对应的Server
 	s.udpEntryPoints.Start() // 启动UDP入口点
 	s.watcher.Start()        // 监听动态配置，一旦发现配置更新，就立马热加载动态配置
 
-	s.routinesPool.GoCtx(s.listenSignals)
+	s.routinesPool.GoCtx(s.listenSignals) // 启动协程池
 }
 
 // Wait blocks until the server shutdown.
