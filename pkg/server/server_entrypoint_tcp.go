@@ -80,15 +80,17 @@ func newHTTPForwarder(ln net.Listener) *httpForwarder {
 }
 
 // ServeTCP uses the connection to serve it later in "Accept".
-// ServerTCP是有外部调用的函数，一旦入口点的连接经过路由判定之后，如果认为当前的请求可以进入到HTTP服务，就会调用这个Handler处理连接
-// 此时，HTTPForwarder就会直接把请求放到channel中。而HTTPForward本质上就是抽象的一个HTTPServer,因此会通过Accept函数消费这里面的
+// 1、ServerTCP是有外部调用的函数，一旦入口点的连接经过路由判定之后，如果认为当前的请求可以进入到HTTP服务，就会调用这个Handler处理连接
+// 2、此时，HTTPForwarder就会直接把请求放到channel中。而HTTPForward本质上就是抽象的一个HTTPServer,因此会通过Accept函数消费这里面的
 // 连接，并使用HTTP协议解析连接中的数据
+// 3、本质上HTTPForwarder就只一个Handler
 func (h *httpForwarder) ServeTCP(conn tcp.WriteCloser) {
 	// 直接把连接写入到channel，然后直接退出
 	h.connChan <- conn
 }
 
 // Accept retrieves a served connection in ServeTCP.
+// 这里重写了Listener的Accept方法
 func (h *httpForwarder) Accept() (net.Conn, error) {
 	select {
 	case conn := <-h.connChan:
@@ -198,6 +200,7 @@ func NewTCPEntryPoint(ctx context.Context,
 	tracker := newConnectionTracker()
 
 	// 监听入口点，并且对于每个客户端连接，都设置为keepalive
+	// 这里在真正的监听端口
 	listener, err := buildListener(ctx, configuration)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing server: %w", err)
@@ -217,6 +220,7 @@ func NewTCPEntryPoint(ctx context.Context,
 		return nil, fmt.Errorf("error preparing http server: %w", err)
 	}
 
+	// 内部的HTTPServer其实就是靠这个Forwarder获取连接
 	rt.SetHTTPForwarder(httpServer.Forwarder)
 
 	// TODO 实例化一个HTTPSServer用于处理HTTPS流量，本质上HTTPS流量经过TLS解析之后就是纯粹的HTTP流量
@@ -233,7 +237,7 @@ func NewTCPEntryPoint(ctx context.Context,
 
 	rt.SetHTTPSForwarder(httpsServer.Forwarder)
 
-	// 其实就是Router
+	// tcpSwitcher本质上就是一个tcp.Handler
 	tcpSwitcher := &tcp.HandlerSwitcher{}
 	tcpSwitcher.Switch(rt)
 
@@ -286,8 +290,8 @@ func (e *TCPEntryPoint) Start(ctx context.Context) {
 			panic(err)
 		}
 
-		// 启动一个协程处理当前的连接
-		// TODO 这里的safe有何用意？什么情况下是不完全的？有哪些临界值？
+		// 1、启动一个协程处理当前的连接
+		// 2、这里的Safe其实并不是值的并发安全，而是指的是panic，因为协程中很有可能发生panic，此时需要处理这个panic
 		safe.Go(func() {
 			// Enforce read/write deadlines at the connection level,
 			// because when we're peeking the first byte to determine whether we are doing TLS,
@@ -600,8 +604,8 @@ type stoppableServer interface {
 
 type httpServer struct {
 	Server    stoppableServer
-	Forwarder *httpForwarder                   // TODO 看起来是用于转发流量
-	Switcher  *middlewares.HTTPHandlerSwitcher // TODO 如何理解这玩意？
+	Forwarder *httpForwarder                   // Forwarder用于转发流量，本身是一个tcp.Handler，同时也是一个net.Listener
+	Switcher  *middlewares.HTTPHandlerSwitcher // Switcher用于处理请求，本质上就是一个http.Handler
 }
 
 func createHTTPServer(
@@ -657,7 +661,7 @@ func createHTTPServer(
 	}
 
 	serverHTTP := &http.Server{
-		Handler:      handler,
+		Handler:      handler, // TODO 路由是怎么被装在进来的？
 		ErrorLog:     httpServerLogger,
 		ReadTimeout:  time.Duration(configuration.Transport.RespondingTimeouts.ReadTimeout),
 		WriteTimeout: time.Duration(configuration.Transport.RespondingTimeouts.WriteTimeout),
@@ -726,8 +730,8 @@ func createHTTPServer(
 	}()
 	return &httpServer{
 		Server:    serverHTTP,
-		Forwarder: listener,
-		Switcher:  httpSwitcher,
+		Forwarder: listener,     // 用于获取连接，这里server通过Accept获取连接，而外部则是通过调用ServerTCP方法放入连接
+		Switcher:  httpSwitcher, // 用于处理HTTP请求
 	}, nil
 }
 

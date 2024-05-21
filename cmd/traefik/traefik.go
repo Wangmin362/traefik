@@ -262,7 +262,7 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 
 	// Providers plugins
 
-	// TODO 加载Provider插件
+	// 加载Provider插件，Provider用于给Traefik提供动态配置
 	for name, conf := range staticConfiguration.Providers.Plugin {
 		if pluginBuilder == nil {
 			break
@@ -288,6 +288,7 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 
 	// 1、RoundTripper用于抽象对于HTTP请求的处理，Traefik实现了smartRoundTripper用于处理HTTP, HTTP/2流量
 	// 2、所谓的RoundTripper，其实就是Traefik根据客户配置的Transport的不同，生成不同的http.Transport
+	// 3、这里用于定制化Transport
 	roundTripperManager := service.NewRoundTripperManager()
 	// 从ACMEProvider中获取ACME Handler
 	acmeHTTPHandler := getHTTPChallengeHandler(acmeProviders, httpChallengeProvider)
@@ -305,7 +306,7 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 	// 1、构建指定入口点的请求链，增加通用的日志、链路追踪、指标中间件
 	// 2、这里为入口点添加的中间件都是公共的，所以是通用的方法
 	chainBuilder := middleware.NewChainBuilder(metricsRegistry, accessLog, tracer)
-	// 1、把入口点按照不同的协议进行归类，不是TCP入口点，就是TCP入口点
+	// 1、把入口点按照不同的协议进行归类，不是TCP入口点，就是UDP入口点
 	// 2、这里仅仅涉及到入口点的分类，并没有涉及到路由的组装
 	routerFactory := server.NewRouterFactory(
 		*staticConfiguration, // 静态配置

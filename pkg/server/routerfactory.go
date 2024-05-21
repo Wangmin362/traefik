@@ -40,10 +40,10 @@ type RouterFactory struct {
 }
 
 // NewRouterFactory creates a new RouterFactory.
-// 把入口点按照不同的协议进行归类，不是TCP入口点，就是TCP入口点
+// 把入口点按照不同的协议进行归类，不是TCP入口点，就是UDP入口点
 func NewRouterFactory(
 	staticConfiguration static.Configuration, // 静态配置
-	managerFactory *service.ManagerFactory, // 用于管理Traefik中各种API，主要是Traefik内部API、Dashboard API、普罗米修斯指标 API、Ping API
+	managerFactory *service.ManagerFactory, // 用于管理Traefik中各种API，主要是Traefik内部API、Dashboard API、普罗米修斯指标 API、Ping API、以及真正的流量处理
 	tlsManager *tls.Manager, // TLS
 	chainBuilder *middleware.ChainBuilder, // 每个请求的处理链，已经配置了公共的日志、链路追踪、指标中间件
 	pluginBuilder middleware.PluginsBuilder, // 用户配置的远端插件和本地插件

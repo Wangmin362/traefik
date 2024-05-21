@@ -32,6 +32,7 @@ type Router struct {
 	// httpForwarder handles all HTTP requests.
 	// TODO 这玩意有啥用？
 	// 1、Router其实就是根据用户配置不同的路由，把流量导入到不同的服务，也就是核心功能还是转发流量
+	// 2、外层的Listener监听到一个连接进来之后，就回到用这个httpForwarder继续处理连接
 	httpForwarder tcp.Handler
 	// httpsForwarder handles (indirectly through muxerHTTPS, or directly) all HTTPS requests.
 	httpsForwarder tcp.Handler
@@ -84,7 +85,7 @@ func (r *Router) GetTLSGetClientInfo() func(info *tls.ClientHelloInfo) (*tls.Con
 }
 
 // ServeTCP forwards the connection to the right TCP/HTTP handler.
-// 1、用于把流量导入到合适的TCP服务或者HTTP服务
+// 1、用于处理TCP连接
 func (r *Router) ServeTCP(conn tcp.WriteCloser) {
 	// Handling Non-TLS TCP connection early if there is neither HTTP(S) nor TLS routers on the entryPoint,
 	// and if there is at least one non-TLS TCP router.
@@ -99,6 +100,7 @@ func (r *Router) ServeTCP(conn tcp.WriteCloser) {
 			return
 		}
 
+		// TODO 处理TCP连接
 		handler, _ := r.muxerTCP.Match(connData)
 		// If there is a handler matching the connection metadata,
 		// we let it handle the connection.
@@ -139,6 +141,7 @@ func (r *Router) ServeTCP(conn tcp.WriteCloser) {
 	}
 
 	if !hello.isTLS {
+		// 不是TLS连接
 		handler, _ := r.muxerTCP.Match(connData)
 		switch {
 		case handler != nil:
@@ -162,6 +165,7 @@ func (r *Router) ServeTCP(conn tcp.WriteCloser) {
 	// (which is also incidentally the same used in the last block below for 404s).
 	// The added value from doing Match is to find and use the specific TLS config
 	// (wrapped inside the returned handler) requested for the given HostSNI.
+	// 处理HTTPS连接
 	handlerHTTPS, catchAllHTTPS := r.muxerHTTPS.Match(connData)
 	if handlerHTTPS != nil && !catchAllHTTPS {
 		// In order not to depart from the behavior in 2.6,

@@ -72,7 +72,7 @@ type Manager struct {
 	routinePool         *safe.Pool       // 协程池
 	metricsRegistry     metrics.Registry // 普罗米修斯指标注册中心
 	bufferPool          httputil.BufferPool
-	roundTripperManager RoundTripperGetter // 用于http客户但发送HTTP请求，并获取响应保温。可以简单理解为http客户端
+	roundTripperManager RoundTripperGetter // 用于http客户但发送HTTP请求，并获取响应报文。可以简单理解为http客户端
 	// balancers is the map of all Balancers, keyed by service name.
 	// There is one Balancer per service handler, and there is one service handler per reference to a service
 	// (e.g. if 2 routers refer to the same service name, 2 service handlers are created),
@@ -432,6 +432,7 @@ func (m *Manager) getLoadBalancer(ctx context.Context, serviceName string, servi
 	}
 
 	lbsu := healthcheck.NewLBStatusUpdater(lb, m.configs[serviceName], service.HealthCheck)
+	// 更新可用的列表
 	if err := m.upsertServers(ctx, lbsu, service.Servers); err != nil {
 		return nil, fmt.Errorf("error configuring load balancer for service %s: %w", serviceName, err)
 	}

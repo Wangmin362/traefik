@@ -51,6 +51,7 @@ type Builder struct {
 	serviceBuilder serviceBuilder
 }
 
+// 给定一个服务名，获取这个服务对应的后端处理http.Handler，这里的http.Handler其实就是反向代理，其中是一个负载均衡器
 type serviceBuilder interface {
 	BuildHTTP(ctx context.Context, serviceName string) (http.Handler, error)
 }
