@@ -1,14 +1,14 @@
 # 配置80入口点，接收所有的HTTP流量
 entryPoints:
   web:
-    address: ":8800"
+    address: ":8018"
 #  people:
 #    address: ":801"
 
 # 对于文件，默认就是开启了watch
 providers:
   file:
-    filename: "cmd\\traefik\\config\\dynamic.yml"
+    filename: "config/dynamic.yml"
 
 log:
   level: trace

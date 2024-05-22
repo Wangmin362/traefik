@@ -8,7 +8,8 @@ http:
 #        - my-basic-auth
       service: confluence
       rule: Host(`cd-confluence.skyguard.com.cn`)
-
+      # middleware:
+      #   - testHeader
 #    people:
 #      service: people-cn
 #      rule: Host(`local.people.cn`)
@@ -21,13 +22,19 @@ http:
 #          - test:$apr1$H6uskkkW$IgXLP6ewTrSuBkTrqE8wj/
 #          - test2:$apr1$d9hr9HBB$4HxwgUir3HP4EsggP/QNo0
 #        usersFile: etc/traefik/.htpasswd
+  # middlewares:
+  #   testHeader:
+  #     headers:
+  #       customRequestHeaders:
+  #         Host: "172.30.3.236:8090"
+
 
   # Add the service
   services:
     confluence:
       loadBalancer:
         servers:
-          - url: http://172.30.3.224:10805
+          - url: http://172.30.3.236:8090
 #        passHostHeader: false
 #    people-cn:
 #      loadBalancer:

@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/net/http/httpproxy"
+
 	ptypes "github.com/traefik/paerser/types"
 	"github.com/traefik/traefik/v2/pkg/config/dynamic"
 	"github.com/traefik/traefik/v2/pkg/log"
@@ -43,48 +45,6 @@ func buildProxy(
 
 	// TODO 这里的请求是如何被反向代理成功的？
 	proxy := &httputil.ReverseProxy{
-		Director: func(outReq *http.Request) {
-			u := outReq.URL
-			if outReq.RequestURI != "" {
-				parsedURL, err := url.ParseRequestURI(outReq.RequestURI)
-				if err == nil {
-					u = parsedURL
-				}
-			}
-
-			outReq.URL.Path = u.Path
-			outReq.URL.RawPath = u.RawPath
-			// If a plugin/middleware adds semicolons in query params, they should be urlEncoded.
-			outReq.URL.RawQuery = strings.ReplaceAll(u.RawQuery, ";", "&")
-			outReq.RequestURI = "" // Outgoing request should not have RequestURI
-
-			outReq.Proto = "HTTP/1.1"
-			outReq.ProtoMajor = 1
-			outReq.ProtoMinor = 1
-
-			// Do not pass client Host header unless optsetter PassHostHeader is set.
-			if passHostHeader != nil && !*passHostHeader {
-				outReq.Host = outReq.URL.Host
-			}
-
-			// Even if the websocket RFC says that headers should be case-insensitive,
-			// some servers need Sec-WebSocket-Key, Sec-WebSocket-Extensions, Sec-WebSocket-Accept,
-			// Sec-WebSocket-Protocol and Sec-WebSocket-Version to be case-sensitive.
-			// https://tools.ietf.org/html/rfc6455#page-20
-			if isWebSocketUpgrade(outReq) {
-				// TODO 这里在干嘛？
-				outReq.Header["Sec-WebSocket-Key"] = outReq.Header["Sec-Websocket-Key"]
-				outReq.Header["Sec-WebSocket-Extensions"] = outReq.Header["Sec-Websocket-Extensions"]
-				outReq.Header["Sec-WebSocket-Accept"] = outReq.Header["Sec-Websocket-Accept"]
-				outReq.Header["Sec-WebSocket-Protocol"] = outReq.Header["Sec-Websocket-Protocol"]
-				outReq.Header["Sec-WebSocket-Version"] = outReq.Header["Sec-Websocket-Version"]
-				delete(outReq.Header, "Sec-Websocket-Key")
-				delete(outReq.Header, "Sec-Websocket-Extensions")
-				delete(outReq.Header, "Sec-Websocket-Accept")
-				delete(outReq.Header, "Sec-Websocket-Protocol")
-				delete(outReq.Header, "Sec-Websocket-Version")
-			}
-		},
 		Transport:     roundTripper, // 用于完成HTTP事务，即构造HTTP报文，然后就收响应
 		FlushInterval: time.Duration(flushInterval),
 		BufferPool:    bufferPool,
@@ -115,6 +75,67 @@ func buildProxy(
 			}
 		},
 	}
+
+	director := func(outReq *http.Request) {
+		u := outReq.URL
+		if outReq.RequestURI != "" {
+			parsedURL, err := url.ParseRequestURI(outReq.RequestURI)
+			if err == nil {
+				u = parsedURL
+			}
+		}
+
+		outReq.URL.Path = u.Path
+		outReq.URL.RawPath = u.RawPath
+		// If a plugin/middleware adds semicolons in query params, they should be urlEncoded.
+		outReq.URL.RawQuery = strings.ReplaceAll(u.RawQuery, ";", "&")
+		outReq.RequestURI = "" // Outgoing request should not have RequestURI
+
+		outReq.Host = "172.30.3.236:8090"
+
+		// 设置SOCKS代理
+		tp := proxy.Transport.(*KerberosRoundTripper)
+		smtp := tp.OriginalRoundTripper.(*smartRoundTripper)
+		hpc := httpproxy.Config{
+			HTTPProxy:  "socks5://172.30.3.224:10805",
+			HTTPSProxy: "socks5://172.30.3.224:10805",
+		}
+		smtp.http.Proxy = func(r *http.Request) (*url.URL, error) {
+			return hpc.ProxyFunc()(r.URL)
+		}
+		smtp.http2.Proxy = func(r *http.Request) (*url.URL, error) {
+			return hpc.ProxyFunc()(r.URL)
+		}
+		log.Debugf("proxy.Transport type is: %T", smtp.http)
+
+		outReq.Proto = "HTTP/1.1"
+		outReq.ProtoMajor = 1
+		outReq.ProtoMinor = 1
+
+		// Do not pass client Host header unless optsetter PassHostHeader is set.
+		if passHostHeader != nil && !*passHostHeader {
+			outReq.Host = outReq.URL.Host
+		}
+
+		// Even if the websocket RFC says that headers should be case-insensitive,
+		// some servers need Sec-WebSocket-Key, Sec-WebSocket-Extensions, Sec-WebSocket-Accept,
+		// Sec-WebSocket-Protocol and Sec-WebSocket-Version to be case-sensitive.
+		// https://tools.ietf.org/html/rfc6455#page-20
+		if isWebSocketUpgrade(outReq) {
+			// TODO 这里在干嘛？
+			outReq.Header["Sec-WebSocket-Key"] = outReq.Header["Sec-Websocket-Key"]
+			outReq.Header["Sec-WebSocket-Extensions"] = outReq.Header["Sec-Websocket-Extensions"]
+			outReq.Header["Sec-WebSocket-Accept"] = outReq.Header["Sec-Websocket-Accept"]
+			outReq.Header["Sec-WebSocket-Protocol"] = outReq.Header["Sec-Websocket-Protocol"]
+			outReq.Header["Sec-WebSocket-Version"] = outReq.Header["Sec-Websocket-Version"]
+			delete(outReq.Header, "Sec-Websocket-Key")
+			delete(outReq.Header, "Sec-Websocket-Extensions")
+			delete(outReq.Header, "Sec-Websocket-Accept")
+			delete(outReq.Header, "Sec-Websocket-Protocol")
+			delete(outReq.Header, "Sec-Websocket-Version")
+		}
+	}
+	proxy.Director = director
 
 	return proxy, nil
 }
