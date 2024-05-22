@@ -17,14 +17,14 @@ const (
 
 // Configuration holds the information about the currently running traefik instance.
 type Configuration struct {
-	Routers        map[string]*RouterInfo        `json:"routers,omitempty"`        // HTTP 路由信息
-	Middlewares    map[string]*MiddlewareInfo    `json:"middlewares,omitempty"`    // HTTP中间件
-	TCPMiddlewares map[string]*TCPMiddlewareInfo `json:"tcpMiddlewares,omitempty"` // TCP中间件
-	Services       map[string]*ServiceInfo       `json:"services,omitempty"`       // HTTP后端服务
-	TCPRouters     map[string]*TCPRouterInfo     `json:"tcpRouters,omitempty"`     // TCP路由
-	TCPServices    map[string]*TCPServiceInfo    `json:"tcpServices,omitempty"`    // TCP后端服务
-	UDPRouters     map[string]*UDPRouterInfo     `json:"udpRouters,omitempty"`     // UDP路由
-	UDPServices    map[string]*UDPServiceInfo    `json:"udpServices,omitempty"`    // UDP后端服务
+	Routers        map[string]*RouterInfo        `json:"routers,omitempty"`        // HTTP 路由信息 key为：<名字>@<provider>
+	Middlewares    map[string]*MiddlewareInfo    `json:"middlewares,omitempty"`    // HTTP中间件 key为：<名字>@<provider>
+	TCPMiddlewares map[string]*TCPMiddlewareInfo `json:"tcpMiddlewares,omitempty"` // TCP中间件 key为：<名字>@<provider>
+	Services       map[string]*ServiceInfo       `json:"services,omitempty"`       // HTTP后端服务 key为：<名字>@<provider>
+	TCPRouters     map[string]*TCPRouterInfo     `json:"tcpRouters,omitempty"`     // TCP路由 key为：<名字>@<provider>
+	TCPServices    map[string]*TCPServiceInfo    `json:"tcpServices,omitempty"`    // TCP后端服务 key为：<名字>@<provider>
+	UDPRouters     map[string]*UDPRouterInfo     `json:"udpRouters,omitempty"`     // UDP路由 key为：<名字>@<provider>
+	UDPServices    map[string]*UDPServiceInfo    `json:"udpServices,omitempty"`    // UDP后端服务 key为：<名字>@<provider>
 }
 
 // NewConfig returns a Configuration initialized with the given conf. It never returns nil.

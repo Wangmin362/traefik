@@ -55,7 +55,7 @@ func NewConfigurationWatcher(
 func (c *ConfigurationWatcher) Start() {
 	c.routinesPool.GoCtx(c.receiveConfigurations)
 	c.routinesPool.GoCtx(c.applyConfigurations)
-	c.startProviderAggregator()
+	c.startProviderAggregator() // 启动各个Provider
 }
 
 // Stop the configuration watcher.

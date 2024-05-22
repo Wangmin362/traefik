@@ -198,7 +198,7 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 
 	// adds internal provider  这个Provider用于暴露Traefik API
 	// Traefik服务本身也有一些Restful接口，这些接口可能也需要暴露出去，所以也需要一个Provider提供路由参数，路由的目的地其实就是Traefik自己
-	err := providerAggregator.AddProvider(traefik.New(*staticConfiguration))
+	err := providerAggregator.AddProvider(traefik.New(*staticConfiguration)) // 增加IntervalProvider
 	if err != nil {
 		return nil, err
 	}
@@ -408,7 +408,7 @@ func getHTTPChallengeHandler(acmeProviders []*acme.Provider, httpChallengeProvid
 }
 
 func getDefaultsEntrypoints(staticConfiguration *static.Configuration) []string {
-	// TODO 什么叫做默认入口点？ 有啥用？
+	// TODO 什么叫做默认入口点？ 有啥用？  默认入口点是给哪些动态配置没有配置入口点的路由使用的，即如果一个路由没有配置入口点，就是用默认入口点
 	var defaultEntryPoints []string
 	for name, cfg := range staticConfiguration.EntryPoints {
 		protocol, err := cfg.GetProtocol()
