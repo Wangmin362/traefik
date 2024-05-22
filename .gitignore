@@ -1,7 +1,6 @@
 .idea/
 .intellij/
 *.iml
-.vscode/
 .DS_Store
 /dist
 /webui/.tmp/
