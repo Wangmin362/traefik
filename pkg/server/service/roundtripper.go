@@ -38,6 +38,7 @@ func NewRoundTripperManager() *RoundTripperManager {
 }
 
 // RoundTripperManager handles roundtripper for the reverse proxy.
+// RoundTripper用于完成http请求的发送和接收，是一个接口，实现了RoundTripper接口的对象可以作为http.Client的Transport属性，用于发送http请求。
 type RoundTripperManager struct {
 	rtLock sync.RWMutex // 读写锁，用于更新map
 	// 不同服务的http客户端，http.RoundTripper可以理解为http客户端，只不过更加偏向底层，好处就是更加灵活。不同的服务可以配置不同的客户端行为。
@@ -46,6 +47,7 @@ type RoundTripperManager struct {
 }
 
 // Update updates the roundtrippers configurations.
+// 监听动态配置，当动态配置发生变化时，这里需要针对于动态配置中的ServersTransport生成对应的http.RoundTripper，然后更新到roundTrippers中。
 func (r *RoundTripperManager) Update(
 	// 用于配置Traefik和后端服务之间的设置， key为服务名，也就是真实的后端服务。value为定制的http.Transport配置。用户可以为不同的
 	// 后端服务定制不同的行为。 这里说的行为，其实就是作为一个http客户端向真实服务器发送http请求时的行为，其实就是各种参数信息。
@@ -55,7 +57,7 @@ func (r *RoundTripperManager) Update(
 	defer r.rtLock.Unlock()
 
 	// 1、这个for循环主要是为了解决老配置的更新和删除
-	// 遍历旧的Transport配置
+	// 2、遍历旧的Transport配置，看看是否有新的Transport配置中没有的配置，如果有，直接删除
 	for configName, config := range r.configs {
 		// 看看新Transport配置中是否存在
 		newConfig, ok := newConfigs[configName]
@@ -70,6 +72,7 @@ func (r *RoundTripperManager) Update(
 			continue
 		}
 
+		// 否则，如果当前配置发生了更改，就需要使用最新的配置生成新的RoundTripper
 		var err error
 		// TODO 根据新Transport配置创建RoundTripper，直接覆盖老的Transport配置
 		r.roundTrippers[configName], err = createRoundTripper(newConfig)
@@ -109,6 +112,7 @@ func (r *RoundTripperManager) Get(name string) (http.RoundTripper, error) {
 	r.rtLock.RLock()
 	defer r.rtLock.RUnlock()
 
+	// 一般我们是没有专门指定Transport的，因此这里估计多半是nil
 	if rt, ok := r.roundTrippers[name]; ok {
 		return rt, nil
 	}

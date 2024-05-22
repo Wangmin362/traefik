@@ -268,6 +268,7 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 			break
 		}
 
+		// 实例化需要的Provider插件
 		p, err := pluginBuilder.BuildProvider(name, conf)
 		if err != nil {
 			return nil, fmt.Errorf("plugin: failed to build provider: %w", err)
@@ -289,6 +290,7 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 	// 1、RoundTripper用于抽象对于HTTP请求的处理，Traefik实现了smartRoundTripper用于处理HTTP, HTTP/2流量
 	// 2、所谓的RoundTripper，其实就是Traefik根据客户配置的Transport的不同，生成不同的http.Transport
 	// 3、这里用于定制化Transport
+	// 4、TODO 如果一个Service没有特别指定Transport参数，这里会生成对应的参数么？
 	roundTripperManager := service.NewRoundTripperManager()
 	// 从ACMEProvider中获取ACME Handler
 	acmeHTTPHandler := getHTTPChallengeHandler(acmeProviders, httpChallengeProvider)

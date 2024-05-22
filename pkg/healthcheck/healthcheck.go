@@ -307,7 +307,7 @@ type LbStatusUpdater struct {
 	BalancerHandler
 	serviceInfo      *runtime.ServiceInfo // can be nil
 	updaters         []func(up bool)
-	wantsHealthCheck bool
+	wantsHealthCheck bool // 是否需要健康检测，一般是没有开启的
 }
 
 // RegisterStatusUpdater adds fn to the list of hooks that are run when the

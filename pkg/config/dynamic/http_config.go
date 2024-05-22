@@ -22,6 +22,7 @@ type HTTPConfiguration struct {
 	// 2、起核心目的就是为了定制化http.Transport，http.Transport 抽象了一个http客户端，用于向服务端发起一个http请求。这里暴露的配置
 	// 就是为了方便用户定制Traefik的行为
 	// 3、TODO 这里为什么需要把服务的Transport单独拎出来？  完全可以放在Service当中
+	// 4、Key为Service的名字
 	ServersTransports map[string]*ServersTransport `json:"serversTransports,omitempty" toml:"serversTransports,omitempty" yaml:"serversTransports,omitempty" label:"-" export:"true"`
 }
 
