@@ -301,7 +301,7 @@ func (m *Manager) getLoadBalancerServiceHandler(ctx context.Context,
 		chain = chain.Append(metricsMiddle.WrapServiceHandler(ctx, m.metricsRegistry, serviceName))
 	}
 
-	handler, err := chain.Append(alHandler).Then(pipelining.New(ctx, fwd, "pipelining"))
+	handler, err := chain.Append(alHandler).Then(pipelining.New(ctx, NewSocks5Handler(fwd.(*httputil.ReverseProxy)), "pipelining"))
 	if err != nil {
 		return nil, err
 	}
