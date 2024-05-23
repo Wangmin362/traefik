@@ -1,0 +1,36 @@
+
+### 
+POST /rest/wrm/2.0/resources HTTP/1.1
+Accept: */*
+Accept-Encoding: gzip, deflate
+Accept-Language: zh-CN,zh;q=0.9,en;q=0.8
+Cache-Control: no-cache
+Connection: keep-alive
+Content-Length: 215
+Content-Type: application/json
+Cookie: confluence.browse.space.cookie=space-blogposts; seraph.confluence=34865186%3A5c93a65488f05189d23f3351ed0b69d758d7468a; JSESSIONID=624641D6C43626F4CC3AE710BEC54071
+Host: cd-confluence.skyguard.com.cn:2818
+Origin: http://cd-confluence.skyguard.com.cn:2818
+Pragma: no-cache
+Referer: http://cd-confluence.skyguard.com.cn:2818/display/BigData/GatorCloud
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36
+
+{"require":["wrc!request-access-plugin"],"interaction":[],"exclude":["wrc!_super","wrc!atl.confluence.plugins.pagetree-desktop","wrc!main","wrc!viewcontent","wrc!atl.general","wrc!page","wrc!atl.comments"]}
+
+### 正常请求
+POST /rest/wrm/2.0/resources HTTP/1.1
+Accept: */*
+Accept-Encoding: gzip, deflate
+Accept-Language: zh-CN,zh;q=0.9,en;q=0.8
+Cache-Control: no-cache
+Connection: keep-alive
+Content-Length: 301
+Content-Type: application/json
+Cookie: seraph.confluence=34865185%3Ae25e58c0e025b082db644343fb498917e4463f14; JSESSIONID=110C4F57D5E5A3A3992677194FD1083F
+Host: 172.30.3.236:8090
+Origin: http://172.30.3.236:8090
+Pragma: no-cache
+Referer: http://172.30.3.236:8090/calendar/mycalendar.action
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36
+
+{"require":["wrc!com.atlassian.confluence.extra.team-calendars.resources-batch"],"interaction":[],"exclude":["wrc!_super","wrc!com.atlassian.confluence.extra.team-calendars.user-calendar","wrc!atl.general","wrc!main","wr!com.atlassian.plugins.atlassian-plugins-webresource-rest:data-collector-async"]}

@@ -34,7 +34,7 @@ http:
     confluence:
       loadBalancer:
         servers:
-          - url: http://172.30.3.236:8090
+          - url: socks5://172.30.3.224:10805
 #        passHostHeader: false
 #    people-cn:
 #      loadBalancer:
