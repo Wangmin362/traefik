@@ -296,7 +296,7 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 	acmeHTTPHandler := getHTTPChallengeHandler(acmeProviders, httpChallengeProvider)
 	// 1、用于管理Traefik中各种API，主要是Traefik内部API、Dashboard API、普罗米修斯指标 API、Ping API
 	// 2、最最核心的其实ManagerFactory会管理客户端到服务端之间的请求，也就是说Traefik转发流量就是在ManagerFactory中完成的
-	// TODO 继续分析
+	// 3、本质上这里就是在处理请求的地方，实现了如何反向代理当前的请求
 	managerFactory := service.NewManagerFactory(*staticConfiguration, routinesPool, metricsRegistry, roundTripperManager, acmeHTTPHandler)
 
 	// Router factory
@@ -309,7 +309,7 @@ func setupServer(staticConfiguration *static.Configuration) (*server.Server, err
 	// 2、这里为入口点添加的中间件都是公共的，所以是通用的方法
 	chainBuilder := middleware.NewChainBuilder(metricsRegistry, accessLog, tracer)
 	// 1、把入口点按照不同的协议进行归类，不是TCP入口点，就是UDP入口点
-	// 2、这里仅仅涉及到入口点的分类，并没有涉及到路由的组装
+	// 2、这里仅仅涉及到入口点的分类，并没有涉及到路由的组装，其实构造请求链
 	routerFactory := server.NewRouterFactory(
 		*staticConfiguration, // 静态配置
 		managerFactory,       // 用于管理Traefik中各种API，主要是Traefik内部API、Dashboard API、普罗米修斯指标 API、Ping API。其中也包括对于真实流量的转发
@@ -440,7 +440,9 @@ func switchRouter(
 		// 2、udpRouters为UDP路由
 		routers, udpRouters := routerFactory.CreateRouters(rtConf)
 
+		// 设置路由
 		serverEntryPointsTCP.Switch(routers)
+		// 设置路由
 		serverEntryPointsUDP.Switch(udpRouters)
 	}
 }

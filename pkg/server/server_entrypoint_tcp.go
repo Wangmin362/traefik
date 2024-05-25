@@ -166,6 +166,8 @@ func (eps TCPEntryPoints) Stop() {
 }
 
 // Switch the TCP routers.
+// 1、给每个TCP入口点设置一个Router，这个Router是用来处理TCP连接的
+// 2、这里的路由其实就是通过动态配置生成的，即当前请求应该代理到那里去，如何处理当前请求。本质上就是给入口点设置http.Handler
 func (eps TCPEntryPoints) Switch(routersTCP map[string]*tcprouter.Router) {
 	for entryPointName, rt := range routersTCP {
 		eps[entryPointName].SwitchRouter(rt)
@@ -179,6 +181,7 @@ type TCPEntryPoint struct {
 	listener net.Listener
 	// 1、其实就是用于获取Router的玩意，然后根据当前请求在Router中找到最合适的一个路由处理流量
 	// 2、其实可以简单的理解为就是Router，当一个TCP连接进来之后，Router需要负责根据用户配置的路由匹配一个最合适的路由，并把流量转发给对应的服务
+	// 3、本质上就是一个Handler，要么是一个tcp.Handler，要么时http.Handler
 	switcher *tcp.HandlerSwitcher
 	// 入口点的静态配置
 	transportConfiguration *static.EntryPointsTransport
@@ -314,7 +317,7 @@ func (e *TCPEntryPoint) Start(ctx context.Context) {
 				}
 			}
 
-			// TODO 这里的逻辑应该是：找到当前入口点的所有Router，挨个匹配，以最精确的匹配路由为准，把数据io拷贝到目标服务，当前数据流入
+			// 1、这里的逻辑应该是：找到当前入口点的所有Router，挨个匹配，以最精确的匹配路由为准，把数据io拷贝到目标服务，当前数据流入
 			// 服务之前涉及到请求消息的处理。在数据流出服务转发给客户端之前，可以对于数据进行修改。这些都是中间件的职责
 			e.switcher.ServeTCP(newTrackedConnection(writeCloser, e.tracker))
 		})
@@ -392,7 +395,7 @@ func (e *TCPEntryPoint) Shutdown(ctx context.Context) {
 }
 
 // SwitchRouter switches the TCP router handler.
-// TODO 什么叫做切换路由？
+// 这里的路由其实就是通过动态配置生成的，即当前请求应该代理到那里去，如何处理当前请求。本质上就是给入口点设置http.Handler
 func (e *TCPEntryPoint) SwitchRouter(rt *tcprouter.Router) {
 	rt.SetHTTPForwarder(e.httpServer.Forwarder)
 
